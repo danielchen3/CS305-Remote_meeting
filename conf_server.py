@@ -4,10 +4,10 @@ from util import *
 
 class ConferenceServer:
     def __init__(
-        self, conference_id
+        self, 
     ):
         # async server
-        self.conference_id = conference_id  # conference_id for distinguish difference conference
+        self.conference_id = None  # conference_id for distinguish difference conference
         self.conf_serve_ports = None
         self.data_serve_ports = {}
         self.data_types = [
