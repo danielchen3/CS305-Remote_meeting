@@ -96,7 +96,7 @@ class MainServer:
             return {"status": False, "error": "Conference not found"}
 
         # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
-        self.conference_servers[conference_id].handle_client(
+        self.conference_servers[conference_id].accept_client(
             self.reader_connect[user_id], self.writer_connect[user_id]
         )
         print(f"User {user_id} joined Conference {conference_id}.")
@@ -113,7 +113,7 @@ class MainServer:
         conference_id = self.client_connections[user_id]
 
         if self.conference_creators.get(conference_id) != user_id:
-            self.conference_servers[conference_id].handle_client(
+            self.conference_servers[conference_id].quit_client(
                 self.reader_connect[user_id], self.writer_connect[user_id]
             )
             return {
