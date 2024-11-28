@@ -33,7 +33,7 @@ class MainServer:
         Authenticate the user on connection and store user ID.
         """
         while True:
-            writer.write(b"Please type in your ID:\n")
+            # writer.write(b"Please type in your ID:\n")
             await writer.drain()
 
             data = await reader.read(100)
@@ -57,7 +57,7 @@ class MainServer:
                 self.writer_connect[user_id] = writer
                 self.reader_connect[user_id] = reader
                 print(f"User {user_id} authenticated.")
-                writer.write(b"Authentication successful.\n")
+                writer.write(b"logged in")
                 await writer.drain()
                 break
 
@@ -166,6 +166,9 @@ class MainServer:
         running task: handle out-meeting (or also in-meeting) requests from clients
         """
         # 第一次连接请求用户发送自己的id进行认证
+        
+        print("get_user")
+        
         user_id = self.get_user_id(writer)
         # 如果没有认证，需要进行认证
         if not user_id:
