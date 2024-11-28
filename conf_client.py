@@ -1,6 +1,5 @@
 from util import *
 import config
-import socket
 import asyncio
 
 class ConferenceClient:
@@ -15,8 +14,11 @@ class ConferenceClient:
         )
         self.client_socket = None
         self.support_data_types = ['text']  # for some types of data
-        self.share_conns = {'text':None}
-        self.recv_conns = {'text':None}
+        self.share_conns = {}
+        self.recv_conns = {}
+        for i in self.support_data_types:
+            self.share_conns = {i:None}
+            self.recv_conns = {i:None}
         self.conference_info = (
             None  # you may need to save and update some conference_info regularly
         )
@@ -137,13 +139,21 @@ class ConferenceClient:
         pay attention to the exception handling
         """
         self.conns.close()
-        
-    def start(self):
+    async def start(self):
         """
         execute functions based on the command line input
         """
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((SERVER_IP, MAIN_SERVER_PORT))
+        reader, writer = await asyncio.open_connection(config.SERVER_IP, config.MAIN_SERVER_PORT)
+        self.conns = (reader, writer)
+        while True:
+            self.id = input('please enter your ID:').strip()
+            message = self.id
+            writer.write(message.encode())  # 异步发送数据
+            await writer.drain()  # 确保数据已发送
+            data = await reader.read(100)
+            print(f"Server response: {data.decode()}")
+            if "logged in" in data.decode():
+                break
         while True:
             if not self.on_meeting:
                 status = "Free"
@@ -160,7 +170,7 @@ class ConferenceClient:
             fields = cmd_input.split(maxsplit=1)
             if len(fields) == 1:
                 if cmd_input in ("?", "？"):
-                    print(HELP)
+                    print(config.HELP)
                 elif cmd_input == "create":
                     self.create_conference()
                 elif cmd_input == "quit":
@@ -189,10 +199,10 @@ class ConferenceClient:
 
             if not recognized:
                 print(f"[Warn]: Unrecognized cmd_input {cmd_input}")
-        client_socket.close()
+        writer.close()
         print('Client closed')
 
 
 if __name__ == "__main__":
     client1 = ConferenceClient()
-    client1.start()
+    asyncio.run(client1.start())
