@@ -13,10 +13,20 @@ class MainServer:
         self.main_server = None
 
         self.conference_conns = {}
-        self.conference_servers = defaultdict(set) # self.conference_servers[conference_id] = ConferenceManager
-        self.conference_creators = defaultdict(set)  # 会议创建者：conference_id -> creator_user_id
-        self.user_conferences = defaultdict(set)  # 用户参与的会议：user_id -> set(conference_id)
-        self.client_connections = defaultdict(set) # writer -> user_id # writer对于每个连接都是唯一的，所以可以直接使用，然后exit之后会清理writer
+        self.conference_servers = defaultdict(
+            set
+        )  # self.conference_servers[conference_id] = ConferenceManager
+        self.conference_creators = defaultdict(
+            set
+        )  # 会议创建者：conference_id -> creator_user_id
+        self.user_conferences = defaultdict(
+            set
+        )  # 用户参与的会议：user_id -> conference_id
+        self.client_connections = defaultdict(
+            set
+        )  # writer -> user_id # writer对于每个连接都是唯一的，所以可以直接使用，然后exit之后会清理writer
+        self.writer_connect = defaultdict(set)  # user_id -> writer
+        self.reader_connect = defaultdict(set)  # user_id -> reader
 
     async def authenticate_user(self, reader, writer):
         """
@@ -34,19 +44,23 @@ class MainServer:
                 writer.close()
                 await writer.wait_closed()
                 return None
-            
+
             # 检查用户ID是否已经存在
             if user_id in self.client_connections.values():
                 # 如果ID已存在，提示用户重新输入
-                writer.write(b"Authentication failed. ID already exists, please try again: ")
+                writer.write(
+                    b"Authentication failed. ID already exists, please try again: "
+                )
                 await writer.drain()
-            else: 
+            else:
                 self.client_connections[writer] = user_id
+                self.writer_connect[user_id] = writer
+                self.reader_connect[user_id] = reader
                 print(f"User {user_id} authenticated.")
                 writer.write(b"Authentication successful.\n")
                 await writer.drain()
                 break
-        
+
         return user_id
 
     def get_user_id(self, writer):
@@ -60,19 +74,19 @@ class MainServer:
         create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
         """
         conference_id = len(self.conference_servers) + 1
-        conf_server = ConferenceServer(conference_id)
+        conf_server = ConferenceServer(
+            conference_id, self.reader_connect[user_id], self.writer_connect[user_id]
+        )
         self.conference_servers[conference_id] = conf_server
         # 将user_id加入创建者名单
         self.conference_creators[conference_id] = user_id
-
-        # 将conference_id加入到user_id参与到的会议中
-        if user_id not in self.user_conferences:
-            self.user_conferences[user_id] = set()
-        self.user_conferences[user_id].add(conference_id)
-
+        self.client_connections[user_id] = conference_id
         asyncio.create_task(conf_server.start())
         print(f"Conference {conference_id} created by {user_id}.")
-        return {"status": True, "message": f"Create conference {conference_id} successfully"}
+        return {
+            "status": True,
+            "message": f"Create conference {conference_id} successfully",
+        }
 
     def handle_join_conference(self, user_id, conference_id):
         """
@@ -80,23 +94,32 @@ class MainServer:
         """
         if conference_id not in self.conference_servers:
             return {"status": False, "error": "Conference not found"}
-        
-        # 将user_id的会议集中加入会议
-        self.user_conferences[user_id].add(conference_id)
+
+        # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
+        self.conference_servers[conference_id].handle_client(
+            self.reader_connect[user_id], self.writer_connect[user_id]
+        )
         print(f"User {user_id} joined Conference {conference_id}.")
         return {
             "status": True,
             "message": f"Joined Conference {conference_id} successfully",
         }
 
-    def handle_quit_conference(self, user_id, conference_id):
+    def handle_quit_conference(self, user_id):
         """
         quit conference (in-meeting request & or no need to request)
         """
         # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
+        conference_id = self.client_connections[user_id]
+
         if self.conference_creators.get(conference_id) != user_id:
-            self.user_conferences[user_id].discard(conference_id)
-            return {"status": "success", "message": f"User {user_id} has left conference {conference_id}."}
+            self.conference_servers[conference_id].handle_client(
+                self.reader_connect[user_id], self.writer_connect[user_id]
+            )
+            return {
+                "status": "success",
+                "message": f"User {user_id} has left conference {conference_id}.",
+            }
 
         return self.handle_cancel_conference(
             user_id=user_id, conference_id=conference_id
@@ -106,6 +129,9 @@ class MainServer:
         """
         cancel conference (in-meeting request, a ConferenceServer should be closed by the MainServer)
         """
+
+        conference_id = self.client_connections[user_id]
+
         if conference_id not in self.conference_servers:
             return {"status": False, "error": "Conference not found"}
 
@@ -162,9 +188,11 @@ class MainServer:
                 elif message["type"] == "join":
                     conference_id = message["conference_id"]
                     response = self.handle_join_conference(user_id, conference_id)
+                elif message["type"] == "quit":
+                    response = self.handle_quit_conference(user_id)
                 elif message["type"] == "cancel":
-                    conference_id = message["conference_id"]
-                    response = self.handle_cancel_conference(user_id, conference_id)
+                    # conference_id = message["conference_id"]
+                    response = self.handle_cancel_conference(user_id)
                 elif message["type"] == "view":
                     response = self.get_active_conferences()
                 elif message["type"] == "exit":
@@ -189,8 +217,11 @@ class MainServer:
         """
         start MainServer
         """
+
         async def main():
-            server = await asyncio.start_server(self.request_handler, self.server_ip, self.server_port)
+            server = await asyncio.start_server(
+                self.request_handler, self.server_ip, self.server_port
+            )
             async with server:
                 print(f"Server started on {self.server_ip}:{self.server_port}")
                 await server.serve_forever()
