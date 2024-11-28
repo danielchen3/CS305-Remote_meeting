@@ -55,7 +55,7 @@ class MainServer:
         """
         return self.client_connections.get(writer)
 
-    def handle_creat_conference(self, user_id):
+    def handle_create_conference(self, user_id):
         """
         create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
         """
