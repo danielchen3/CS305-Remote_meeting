@@ -117,7 +117,7 @@ class MainServer:
                 self.reader_connect[user_id], self.writer_connect[user_id]
             )
             return {
-                "status": "success",
+                "status": True,
                 "message": f"User {user_id} has left conference {conference_id}.",
             }
 

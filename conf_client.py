@@ -1,7 +1,7 @@
 from util import *
 import config
 import asyncio
-
+import json
 class ConferenceClient:
     def __init__(
         self,
@@ -14,114 +14,121 @@ class ConferenceClient:
         )
         self.client_socket = None
         self.support_data_types = ['text']  # for some types of data
-        self.share_conns = {}
-        self.recv_conns = {}
+        self._conns = {}
+        self.switch = {}
         for i in self.support_data_types:
-            self.share_conns = {i:None}
-            self.recv_conns = {i:None}
+            self.switch[i] = False
         self.conference_info = (
             None  # you may need to save and update some conference_info regularly
         )
         self.recv_data = None  # you may need to save received streamd data from other clients in conference
-    def TcpGet(self, request_message): # return a string
-        print(f'send to server {request_message}')
-        self.client_socket.sendall(request_message.encode('utf-8'))
-        response = self.client_socket.recv(1024).decode('utf-8')
-        print(f'The response is {response}')
-        return response
-    def create_conference(self):
+    async def create_conference(self):
         """
         create a conference: send create-conference request to server and obtain necessary data to
         """
-        pass
-        response = self.TcpGet(request_message = 'create')
-        print(f'Create a meeting {response}')
-        self.join_conference(response)
-    def join_conference(self, conference_id):
+        reader, writer = self.conns[0], self.conns[1]
+        message = {'type':'create'}
+        writer.write(json.dumps(message).encode())  # 异步发送数据
+        await writer.drain()  # 确保数据已发送
+        data = await reader.read(100)
+        response = json.loads(data.decode())
+        print(f'receive response is {response}')
+        if response['status'] == True:
+            ID = response['message'].split()[1]
+            print(f'Create a meeting {ID}')
+            self.join_conference(ID)
+    async def join_conference(self, conference_id):
         """
         join a conference: send join-conference request with given conference_id, and obtain necessary data to
         """
-        pass
-        response = self.TcpGet(request_message = f'join {int(conference_id)}')
-        if response is not 'error':
+        reader, writer = self.conns[0], self.conns[1]
+        message = {'type':'join', 'conference_id':conference_id}
+        writer.write(json.dumps(message).encode())  # 异步发送数据
+        await writer.drain()  # 确保数据已发送
+        response = await reader.read(100)
+        print(f'receive response is {response}')
+        if response['status'] == True:
             self.on_meeting = True
-            self.conference_info = conference_id
             self.start_conference()
-    def quit_conference(self):
+
+    async def quit_conference(self):
         """
         quit your on-going conference
         """
-        pass
-        response = self.TcpGet(request_message = 'quit')
-        if response is not 'error':
+        reader, writer = self.conns[0], self.conns[1]
+        message = {'type':'quit'}
+        writer.write(json.dumps(message).encode())  # 异步发送数据
+        await writer.drain()  # 确保数据已发送
+        data = await reader.read(100)
+        response = json.loads(data.decode())
+        print(f'receive response is {response}')
+        if response['status'] == True:
+            print(f'Quit successfully')
             self.on_meeting = False
-            self.conference_info = None
             self.close_conference()
             
-    def cancel_conference(self):
+    async def cancel_conference(self):
         """
         cancel your on-going conference (when you are the conference manager): ask server to close all clients
         """
-        pass
-        response = self.TcpGet(request_message = 'cancel')
-        if response is not 'error':
-            self.on_meeting = False
-            self.conference_info = None
-            self.close_conference()
+        reader, writer = self.conns[0], self.conns[1]
+        message = {'type':'cancel'}
+        writer.write(json.dumps(message).encode())  # 异步发送数据
+        await writer.drain()  # 确保数据已发送
+        data = await reader.read(100)
+        response = json.loads(data.decode())
+        print(f'receive response is {response}')
+        if response['status'] == True:
+            print(f'cancel successfully')
         
-    def keep_share(
-        self, data_type, send_conn, capture_function, compress=None, fps_or_frequency=30
+    async def keep_share(
+        self, writer, data_type, capture_function, compress=None, fps_or_frequency=30
     ):
         """
         running task: keep sharing (capture and send) certain type of data from server or clients (P2P)
         you can create different functions for sharing various kinds of data
         """
-        pass
+        while self.on_meeting:
+            if self.switch[data_type] == True:
+                message = {data_type:'test text!test text!test text!'}
+                writer.write(json.dumps(message).encode())  # 异步发送数据
+                await writer.drain()  # 确保数据已发送
 
     def share_switch(self, data_type):
         """
         switch for sharing certain type of data (screen, camera, audio, etc.)
         """
-        if self.share_conns[data_type] is None:
-            self.share_conns[data_type] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.share_conns[data_type].connect((config.SERVER_IP, config.MAIN_SERVER_PORT))
-        else:
-            self.share_conns[data_type].close()
-            self.share_conns[data_type] = None
+        self.switch[data_type] ^= 1
 
-    def keep_recv(self, recv_conn, data_type, decompress=None):
+    async def keep_recv(self, conn, reader, data_type, decompress=None):
         """
         running task: keep receiving certain type of data (save or output)
         you can create other functions for receiving various kinds of data
         """
-        self.recv_data = self.client_socket.recv(1024).decode('utf-8')
-
-    def output_data(self):
+        while self.on_meeting:
+            data = await reader.read(100)
+            if not data:
+                break
+            response = json.loads(data.decode())
+            print(f'receive response is {response}')
+            self.recv_data = response
+            await self.transimission(conn)
+    async def transmission(self, conn):
         """
         running task: output received stream data
         """ 
-        self.conns.sendall(self.recv_data.encode('utf-8'))
+        conn[1].write(self.recv_data.encode())
+        await conn[1].drain()
 
-    async def run(self):
+    async def run(self, conn):
         print('In the meeting')
         for type in self.support_data_types:
-            self.recv_conns[type] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.recv_conns[type].connect((config.SERVER_IP, config.MAIN_SERVER_PORT))
-        while True:
-            for key, value in self.share_conns():
-                if value != None:
-                    self.keep_share(value, key)
-            for type in self.support_data_types:
-                self.keep_recv()
-                self.output_data()
-            if self.recv_data == 'quit': #收到quit则终止
-                break
-        for type in self.support_data_types:
-            self.recv_conns[type].close()
-            self.recv_conns[type] = None
-        print('Quit')
+            reader, writer = await asyncio.open_connection(config.SERVER_IP, config.MAIN_SERVER_PORT)
+            await self.keep_recv(conn, reader, type)
+            await self.keep_share(writer, type)
+        print('Quit run')
 
-    def start_conference(self):
+    async def start_conference(self):
         """
         init conns when create or join a conference with necessary conference_info
         and
@@ -129,16 +136,15 @@ class ConferenceClient:
         """
         import os
         os.system("python ui.py")
-        self.conns = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.conns.connect(('127.0.0.1', UI_PORT))
-        asyncio.create_task(self.run())
+        reader, writer = await asyncio.open_connection('127.0.0.1', config.UI_PORT)
+        self.task = asyncio.create_task(self.run(conn = (reader, writer)))
 
     def close_conference(self):
         """
         close all conns to servers or other clients and cancel the running tasks
         pay attention to the exception handling
         """
-        self.conns.close()
+        print('close conference')
     async def start(self):
         """
         execute functions based on the command line input
@@ -151,7 +157,7 @@ class ConferenceClient:
             writer.write(message.encode())  # 异步发送数据
             await writer.drain()  # 确保数据已发送
             data = await reader.read(100)
-            print(f"Server response: {data.decode()}")
+            print(f"Server response: {data.decode()}\n")
             if "logged in" in data.decode():
                 break
         while True:
