@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 
 class ConferenceServer:
@@ -13,7 +14,7 @@ class ConferenceServer:
         self.running = True
 
     async def handle_data(self, reader, writer, data_type):
-        while True:
+        while self.running:
             data = await reader.read(1024)  # 读取一定量的数据
             if not data:
                 break
@@ -33,6 +34,14 @@ class ConferenceServer:
                 # 启动视频流处理
                 loop = asyncio.get_event_loop()
                 loop.create_task(self.handle_data(reader, writer, 'camera'))
+            elif message.startswith('audio:'):
+                # 启动音频流处理
+                loop = asyncio.get_event_loop()
+                loop.create_task(self.handle_data(reader, writer, 'audio'))
+            elif message.startswith('screen:'):
+                # 启动视频流处理
+                loop = asyncio.get_event_loop()
+                loop.create_task(self.handle_data(reader, writer, 'screen'))
             elif message.startswith('quit'):
                 del self.clients_info[client_id]
                 del self.client_conns[client_id]
@@ -42,7 +51,7 @@ class ConferenceServer:
     async def log(self):
         while self.running:
             print(f'Server {self.conference_id} status: {len(self.clients_info)} clients connected')
-            await asyncio.sleep(10)
+            await asyncio.sleep(1000)
 
     async def cancel_conference(self):
         self.running = False
