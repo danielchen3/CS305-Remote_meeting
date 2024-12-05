@@ -14,7 +14,6 @@ class ConferenceClient:
         )
         self.client_socket = None
         self.support_data_types = ['text']  # for some types of data
-        self._conns = {}
         self.switch = {}
         for i in self.support_data_types:
             self.switch[i] = False
@@ -36,7 +35,7 @@ class ConferenceClient:
         if response['status'] == True:
             ID = response['message'].split()[1]
             print(f'Create a meeting {ID}')
-            self.join_conference(ID)
+            await self.join_conference(ID)
     async def join_conference(self, conference_id):
         """
         join a conference: send join-conference request with given conference_id, and obtain necessary data to
@@ -49,7 +48,7 @@ class ConferenceClient:
         print(f'receive response is {response}')
         if response['status'] == True:
             self.on_meeting = True
-            self.start_conference()
+            await self.start_conference()
 
     async def quit_conference(self):
         """
@@ -65,7 +64,7 @@ class ConferenceClient:
         if response['status'] == True:
             print(f'Quit successfully')
             self.on_meeting = False
-            self.close_conference()
+            await self.close_conference()
             
     async def cancel_conference(self):
         """
@@ -122,8 +121,9 @@ class ConferenceClient:
 
     async def run(self, conn):
         print('In the meeting')
+        reader, writer = self.conns[0], self.conns[1]
         for type in self.support_data_types:
-            reader, writer = await asyncio.open_connection(config.SERVER_IP, config.MAIN_SERVER_PORT)
+            #reader, writer = await asyncio.open_connection(config.SERVER_IP, config.MAIN_SERVER_PORT)
             await self.keep_recv(conn, reader, type)
             await self.keep_share(writer, type)
         print('Quit run')
@@ -178,11 +178,11 @@ class ConferenceClient:
                 if cmd_input in ("?", "？"):
                     print(config.HELP)
                 elif cmd_input == "create":
-                    self.create_conference()
+                    await self.create_conference()
                 elif cmd_input == "quit":
-                    self.quit_conference()
+                    await self.quit_conference()
                 elif cmd_input == "cancel":
-                    self.cancel_conference()
+                    await self.cancel_conference()
                 elif cmd_input == "exit":
                     break
                 else:
