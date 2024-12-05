@@ -33,7 +33,7 @@ class ConferenceClient:
         response = json.loads(data.decode())
         print(f'receive response is {response}')
         if response['status'] == True:
-            ID = response['message'].split()[1]
+            ID = response['message'].split()[2]
             print(f'Create a meeting {ID}')
             await self.join_conference(ID)
     async def join_conference(self, conference_id):
@@ -41,10 +41,12 @@ class ConferenceClient:
         join a conference: send join-conference request with given conference_id, and obtain necessary data to
         """
         reader, writer = self.conns[0], self.conns[1]
+        # print(f"conf_id{conference_id}")
         message = {'type':'join', 'conference_id':conference_id}
         writer.write(json.dumps(message).encode())  # 异步发送数据
         await writer.drain()  # 确保数据已发送
-        response = await reader.read(100)
+        data = await reader.read(100)
+        response = json.loads(data.decode())
         print(f'receive response is {response}')
         if response['status'] == True:
             self.on_meeting = True
@@ -201,7 +203,7 @@ class ConferenceClient:
                 if fields[0] == "join":
                     input_conf_id = fields[1]
                     if input_conf_id.isdigit():
-                        self.join_conference(input_conf_id)
+                        await self.join_conference(input_conf_id)
                     else:
                         print("[Warn]: Input conference ID must be in digital form")
                 elif fields[0] == "switch":

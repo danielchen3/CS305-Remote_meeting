@@ -73,10 +73,12 @@ class MainServer:
         """
         create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
         """
+        print("Start create conf...")
         conference_id = len(self.conference_servers) + 1
         conf_server = ConferenceServer(
             conference_id, self.reader_connect[user_id], self.writer_connect[user_id]
         )
+        print(f"user_id:{user_id} create conference:{conference_id}")
         self.conference_servers[conference_id] = conf_server
         # 将user_id加入创建者名单
         self.conference_creators[conference_id] = user_id
@@ -92,14 +94,16 @@ class MainServer:
         """
         join conference: search corresponding conference_info and ConferenceServer, and reply necessary info to client
         """
-        if conference_id not in self.conference_servers:
+        conference_id = int(conference_id)
+        print(f"conf:{conference_id}")
+        if conference_id not in self.conference_servers.keys():
             return {"status": False, "error": "Conference not found"}
 
         # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
-        self.conference_servers[conference_id].accept_client(
+        self.conference_servers[conference_id].accept_clients(
             self.reader_connect[user_id], self.writer_connect[user_id]
         )
-        print(f"User {user_id} joined Conference {conference_id}.")
+        print(f"User {user_id} joined Conference {conference_id} held by {self.user_conferences[conference_id]}.")
         return {
             "status": True,
             "message": f"Joined Conference {conference_id} successfully",
