@@ -112,6 +112,14 @@ class ConferenceClient:
             print(f'receive response is {response}')
             self.recv_data = response
             await self.transimission(conn)
+    async def view(self):
+        reader, writer = self.conns[0], self.conns[1]
+        message = {'type':'view'}
+        writer.write(json.dumps(message).encode())  # 异步发送数据
+        await writer.drain()  # 确保数据已发送
+        data = await reader.read(100)
+        response = json.loads(data.decode())
+        print(f'receive response is {response}')
     async def transmission(self, conn):
         """
         running task: output received stream data
@@ -183,6 +191,8 @@ class ConferenceClient:
                     await self.quit_conference()
                 elif cmd_input == "cancel":
                     await self.cancel_conference()
+                elif cmd_input == 'view':
+                    await self.view()
                 elif cmd_input == "exit":
                     break
                 else:
