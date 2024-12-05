@@ -3,14 +3,15 @@ import json
 
 
 class ConferenceServer:
-    def __init__(self, conference_id, main_server):
+    def __init__(self, conference_id, reader_main, writer_main):
         self.conference_id = conference_id
         self.conf_serve_ports = None
         self.data_serve_ports = {}
         self.data_types = ['screen', 'camera', 'audio']
         self.clients_info = {}
         self.client_conns = {}
-        self.main_server = main_server
+        self.reader_main = reader_main
+        self.writer_main = writer_main
         self.running = True
 
     async def handle_data(self, reader, writer, data_type):
