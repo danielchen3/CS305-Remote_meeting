@@ -103,7 +103,7 @@ class MainServer:
         self.conference_servers[conference_id].accept_clients(
             self.reader_connect[user_id], self.writer_connect[user_id]
         )
-        print(f"User {user_id} joined Conference {conference_id} held by {self.user_conferences[conference_id]}.")
+        print(f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}.")
         return {
             "status": True,
             "message": f"Joined Conference {conference_id} successfully",
@@ -171,7 +171,7 @@ class MainServer:
         """
         # 第一次连接请求用户发送自己的id进行认证
         
-        print("get_user")
+        print(f"get_user:reader:{reader},writer:{writer}")
         
         user_id = self.get_user_id(writer)
         # 如果没有认证，需要进行认证
