@@ -8,8 +8,8 @@ class ConferenceServer:
         self.conf_serve_ports = 8887
         self.data_serve_ports = {}
         self.data_types = ['screen', 'camera', 'audio']
-        self.reader_list = {reader_main}
-        self.writer_list = {writer_main}
+        self.reader_list = set()
+        self.writer_list = set()
         self.reader_main = reader_main
         self.writer_main = writer_main
         self.running = True
@@ -20,18 +20,18 @@ class ConferenceServer:
             if not data:
                 break
             # 将数据转发给其他所有客户端
-            for client_id, conn in self.writer_list.items():
+            for client_id, conn in self.writer_list:
                 if client_id != writer.get_extra_info('client_id'):
                     await conn.write(f"{data_type}:{data}".encode())
         pass
 
     async def handle_client(self, reader, writer):
-        client_id = writer.get_extra_info('client_id')
-        self.reader_list[client_id] = writer
-        self.writer_list[client_id] = writer
+        print("success handle")
         while self.running:
             data = await reader.read(100)
+            print(data)
             message = data.decode()
+            print(message)
             if message.startswith('camera:'):
                 # 启动视频流处理
                 loop = asyncio.get_event_loop()
@@ -45,10 +45,10 @@ class ConferenceServer:
                 loop = asyncio.get_event_loop()
                 loop.create_task(self.handle_data(reader, writer, 'screen'))
             elif message.startswith('quit'):
-                del self.reader_list[client_id]
-                del self.writer_list[client_id]
+                self.reader_list.remove(reader)
+                self.writer_list.remove(writer)
                 break
-            print(f"Received message from {client_id}: {message}")
+            # print(f"Received message from {client_id}: {message}")
         pass
 
     async def log(self):
@@ -65,10 +65,10 @@ class ConferenceServer:
 
     async def start(self):
         print("start")
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.log())
-        loop.create_task(self.accept_clients())
+        self.running = True
 
-    async def accept_clients(self):
-        server = await asyncio.start_server(self.handle_client, '127.0.0.1', self.conf_serve_ports)
-        await server.serve_forever()
+    async def accept_clients(self, reader, writer):
+        self.reader_list.add(reader)
+        self.writer_list.add(writer)
+        await self.handle_client(reader, writer)
+

@@ -90,7 +90,7 @@ class MainServer:
             "message": f"Create conference {conference_id} successfully",
         }
 
-    def handle_join_conference(self, user_id, conference_id):
+    async def handle_join_conference(self, user_id, conference_id):
         """
         join conference: search corresponding conference_info and ConferenceServer, and reply necessary info to client
         """
@@ -100,10 +100,8 @@ class MainServer:
             return {"status": False, "error": "Conference not found"}
 
         # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
-        self.conference_servers[conference_id].accept_clients(
-            self.reader_connect[user_id], self.writer_connect[user_id]
-        )
-        print(f"User {user_id} joined Conference {conference_id} held by {self.user_conferences[conference_id]}.")
+        asyncio.create_task(self.conference_servers[conference_id].accept_clients(self.reader_connect[user_id], self.writer_connect[user_id]))
+        print(f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}.")
         return {
             "status": True,
             "message": f"Joined Conference {conference_id} successfully",
@@ -194,7 +192,7 @@ class MainServer:
                     response = self.handle_create_conference(user_id)
                 elif message["type"] == "join":
                     conference_id = message["conference_id"]
-                    response = self.handle_join_conference(user_id, conference_id)
+                    response = await self.handle_join_conference(user_id, conference_id)
                 elif message["type"] == "quit":
                     response = self.handle_quit_conference(user_id)
                 elif message["type"] == "cancel":
