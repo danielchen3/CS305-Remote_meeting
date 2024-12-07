@@ -117,7 +117,16 @@ def capture_camera():
 
 
 def capture_voice():
-    return streamin.read(CHUNK)
+    # 打开麦克风流
+    stream = pyaudio.PyAudio().open(format=FORMAT,
+                    channels=CHANNELS,
+                    rate=RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK)
+
+    # 捕获音频数据
+    audio_data = stream.read(CHUNK)
+    return audio_data
 
 
 def compress_image(image, format='JPEG', quality=85):
