@@ -33,7 +33,7 @@ class MainServer:
         )  # writer -> user_id # writer对于每个连接都是唯一的，所以可以直接使用，然后exit之后会清理writer
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
-
+        self.conference_port = {}
     async def authenticate_user(self, reader, writer):
         """
         Authenticate the user on connection and store user ID.
@@ -92,9 +92,10 @@ class MainServer:
         self.client_connections[user_id] = conference_id
         asyncio.run(conf_server.start())
         print(f"Conference {conference_id}:{free_port} created by {user_id}.")
+        self.conference_port[conference_id] = free_port
         return {
             "status": True,
-            "message": f"Create conference {conference_id}:{free_port} successfully",
+            "message": f"Create conference {conference_id} {free_port} successfully",
         }
 
     async def handle_join_conference(self, user_id, conference_id):
@@ -111,7 +112,7 @@ class MainServer:
         print(f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}.")
         return {
             "status": True,
-            "message": f"Joined Conference {conference_id} successfully",
+            "message": f"Joined Conference {conference_id} {self.conference_port[conference_id]} successfully",
         }
 
     def handle_quit_conference(self, user_id):

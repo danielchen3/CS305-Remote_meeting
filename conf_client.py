@@ -34,6 +34,7 @@ class ConferenceClient:
         print(f'receive response is {response}')
         if response['status'] == True:
             ID = response['message'].split()[2]
+            port = response['message'].split()[3]
             print(f'Create a meeting {ID}')
             await self.join_conference(ID)
     async def join_conference(self, conference_id):
@@ -50,7 +51,8 @@ class ConferenceClient:
         print(f'receive response is {response}')
         if response['status'] == True:
             self.on_meeting = True
-            await self.start_conference()
+            port = response['message'].split()[3]
+            await self.start_conference(port)
 
     async def quit_conference(self):
         """
@@ -130,7 +132,7 @@ class ConferenceClient:
             await self.keep_share(writer, type)
         print('Quit run')
 
-    async def start_conference(self):
+    async def start_conference(self, port):
         """
         init conns when create or join a conference with necessary conference_info
         and
@@ -138,7 +140,7 @@ class ConferenceClient:
         """
         import os
         #os.system("python ui.py")
-        reader, writer = await asyncio.open_connection('127.0.0.1', config.CF_PORT)
+        reader, writer = await asyncio.open_connection(config.SERVER_IP, port)
         self.task = asyncio.create_task(self.run(reader, writer))
 
     def close_conference(self):

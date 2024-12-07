@@ -14,5 +14,3 @@ CHANNELS = 1  # Channels for audio capture
 RATE = 44100  # Sampling rate for audio capture
 
 camera_width, camera_height = 480, 480  # resolution for camera capture
-
-CF_PORT = 6666
