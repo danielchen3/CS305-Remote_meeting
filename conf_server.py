@@ -1,13 +1,13 @@
 import asyncio
 import json
-
+import config
 
 class ConferenceServer:
     def __init__(self, conference_id, reader_main, writer_main):
         self.conference_id = conference_id
-        self.conf_serve_ports = 8887
+        self.conf_serve_ports = config.CF_PORT
         self.data_serve_ports = {}
-        self.data_types = ['screen', 'camera', 'audio']
+        self.data_types = ['text']
         self.reader_list = set()
         self.writer_list = set()
         self.reader_main = reader_main

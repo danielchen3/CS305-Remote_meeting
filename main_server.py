@@ -3,6 +3,12 @@ from util import *
 from conf_server import ConferenceServer
 import json
 from collections import defaultdict
+import socket
+
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))  # 绑定到端口0，操作系统自动分配空闲端口
+        return s.getsockname()[1]  # 返回绑定的端口号
 
 
 class MainServer:
@@ -75,19 +81,20 @@ class MainServer:
         """
         print("Start create conf...")
         conference_id = len(self.conference_servers) + 1
+        free_port = get_free_port()
         conf_server = ConferenceServer(
-            conference_id, self.reader_connect[user_id], self.writer_connect[user_id]
+            free_port
         )
-        print(f"user_id:{user_id} create conference:{conference_id}")
+        print(f"user_id:{user_id} create conference:{conference_id}Port:{free_port}")
         self.conference_servers[conference_id] = conf_server
         # 将user_id加入创建者名单
         self.conference_creators[conference_id] = user_id
         self.client_connections[user_id] = conference_id
-        asyncio.create_task(conf_server.start())
-        print(f"Conference {conference_id} created by {user_id}.")
+        asyncio.run(conf_server.start())
+        print(f"Conference {conference_id}:{free_port} created by {user_id}.")
         return {
             "status": True,
-            "message": f"Create conference {conference_id} successfully",
+            "message": f"Create conference {conference_id}:{free_port} successfully",
         }
 
     async def handle_join_conference(self, user_id, conference_id):
