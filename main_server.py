@@ -90,7 +90,7 @@ class MainServer:
         # 将user_id加入创建者名单
         self.conference_creators[conference_id] = user_id
         self.client_connections[user_id] = conference_id
-        asyncio.run(conf_server.start())
+        asyncio.create_task(conf_server.start())
         print(f"Conference {conference_id}:{free_port} created by {user_id}.")
         self.conference_port[conference_id] = free_port
         return {
@@ -107,8 +107,8 @@ class MainServer:
         if conference_id not in self.conference_servers.keys():
             return {"status": False, "error": "Conference not found"}
 
-        # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
-        asyncio.create_task(self.conference_servers[conference_id].accept_clients(self.reader_connect[user_id], self.writer_connect[user_id]))
+        # # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
+        # asyncio.create_task(self.conference_servers[conference_id].accept_clients(self.reader_connect[user_id], self.writer_connect[user_id]))
         print(f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}.")
         return {
             "status": True,

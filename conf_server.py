@@ -1,17 +1,14 @@
 import asyncio
 import json
-import config
+
 
 class ConferenceServer:
-    def __init__(self, conference_id, reader_main, writer_main):
-        self.conference_id = conference_id
-        self.conf_serve_ports = config.CF_PORT
+    def __init__(self, free_port):
+        self.conf_serve_ports = free_port
         self.data_serve_ports = {}
-        self.data_types = ['text']
-        self.reader_list = set()
-        self.writer_list = set()
-        self.reader_main = reader_main
-        self.writer_main = writer_main
+        self.data_types = ['screen', 'camera', 'audio']
+        self.reader_list = {}
+        self.writer_list = {}
         self.running = True
 
     async def handle_data(self, reader, writer, data_type):
@@ -20,41 +17,41 @@ class ConferenceServer:
             if not data:
                 break
             # 将数据转发给其他所有客户端
-            for client_id, conn in self.writer_list:
+            for client_id, conn in self.writer_list.items():
                 if client_id != writer.get_extra_info('client_id'):
                     await conn.write(f"{data_type}:{data}".encode())
         pass
 
     async def handle_client(self, reader, writer):
-        print("success handle")
+        client_id = writer.get_extra_info('client_id')
+        self.reader_list[client_id] = writer
+        self.writer_list[client_id] = writer
         while self.running:
             data = await reader.read(100)
-            print(data)
-            message = data.decode()
-            print(message)
-            if message.startswith('camera:'):
-                # 启动视频流处理
-                loop = asyncio.get_event_loop()
-                loop.create_task(self.handle_data(reader, writer, 'camera'))
-            elif message.startswith('audio:'):
-                # 启动音频流处理
-                loop = asyncio.get_event_loop()
-                loop.create_task(self.handle_data(reader, writer, 'audio'))
-            elif message.startswith('screen:'):
-                # 启动视频流处理
-                loop = asyncio.get_event_loop()
-                loop.create_task(self.handle_data(reader, writer, 'screen'))
-            elif message.startswith('quit'):
-                self.reader_list.remove(reader)
-                self.writer_list.remove(writer)
-                break
+            #message = data.decode()
+            await writer.write(data)
+            # if message.startswith('camera:'):
+            #     # 启动视频流处理
+            #     loop = asyncio.get_event_loop()
+            #     loop.create_task(self.handle_data(reader, writer, 'camera'))
+            # elif message.startswith('audio:'):
+            #     # 启动音频流处理
+            #     loop = asyncio.get_event_loop()
+            #     loop.create_task(self.handle_data(reader, writer, 'audio'))
+            # elif message.startswith('screen:'):
+            #     # 启动视频流处理
+            #     loop = asyncio.get_event_loop()
+            #     loop.create_task(self.handle_data(reader, writer, 'screen'))
+            # elif message.startswith('quit'):
+            #     del self.reader_list[client_id]
+            #     del self.writer_list[client_id]
+            #     break
             # print(f"Received message from {client_id}: {message}")
         pass
 
     async def log(self):
         while self.running:
-            print(f'Server {self.conference_id} status: {len(self.reader_list)} clients connected')
-            await asyncio.sleep(100)
+            print(f'Server status: {len(self.reader_list)} clients connected')
 
     async def cancel_conference(self):
         self.running = False
@@ -65,10 +62,12 @@ class ConferenceServer:
 
     async def start(self):
         print("start")
-        self.running = True
+        print(self.conf_serve_ports)
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.log())
+        loop.create_task(self.accept_clients())
 
-    async def accept_clients(self, reader, writer):
-        self.reader_list.add(reader)
-        self.writer_list.add(writer)
-        await self.handle_client(reader, writer)
-
+    async def accept_clients(self):
+        server = await asyncio.start_server(self.handle_client, '127.0.0.1', self.conf_serve_ports)
+        await server.serve_forever()
+        print("pass")

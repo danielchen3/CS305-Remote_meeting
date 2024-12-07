@@ -166,7 +166,7 @@ class ConferenceClient:
             if not self.on_meeting:
                 status = "Free"
             else:
-                status = f"OnMeeting-{self.conference_id}"
+                status = f"OnMeeting-{self.conference_info}"
 
             print(f'Now status is {status}')
             recognized = True
