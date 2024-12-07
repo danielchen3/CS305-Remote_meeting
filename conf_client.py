@@ -101,7 +101,7 @@ class ConferenceClient:
         """
         self.switch[data_type] ^= 1
 
-    async def keep_recv(self, conn, reader, data_type, decompress=None):
+    async def keep_recv(self, reader, data_type, decompress=None):
         """
         running task: keep receiving certain type of data (save or output)
         you can create other functions for receiving various kinds of data
@@ -113,7 +113,6 @@ class ConferenceClient:
             response = json.loads(data.decode())
             print(f'receive response is {response}')
             self.recv_data = response
-            await self.transimission(conn)
     async def view(self):
         reader, writer = self.conns[0], self.conns[1]
         message = {'type':'view'}
@@ -122,19 +121,12 @@ class ConferenceClient:
         data = await reader.read(100)
         response = json.loads(data.decode())
         print(f'receive response is {response}')
-    async def transmission(self, conn):
-        """
-        running task: output received stream data
-        """ 
-        conn[1].write(self.recv_data.encode())
-        await conn[1].drain()
 
-    async def run(self, conn):
+    async def run(self, reader, writer):
         print('In the meeting')
-        reader, writer = self.conns[0], self.conns[1]
         for type in self.support_data_types:
             #reader, writer = await asyncio.open_connection(config.SERVER_IP, config.MAIN_SERVER_PORT)
-            await self.keep_recv(conn, reader, type)
+            await self.keep_recv(reader, type)
             await self.keep_share(writer, type)
         print('Quit run')
 
@@ -145,9 +137,9 @@ class ConferenceClient:
         start necessary running task for conference
         """
         import os
-        os.system("python ui.py")
-        reader, writer = await asyncio.open_connection('127.0.0.1', config.UI_PORT)
-        self.task = asyncio.create_task(self.run(conn = (reader, writer)))
+        #os.system("python ui.py")
+        reader, writer = await asyncio.open_connection('127.0.0.1', config.CF_PORT)
+        self.task = asyncio.create_task(self.run(reader, writer))
 
     def close_conference(self):
         """
