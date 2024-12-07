@@ -50,7 +50,6 @@ class ConferenceClient:
         response = json.loads(data.decode())
         print(f'receive response is {response}')
         if response['status'] == True:
-            self.on_meeting = True
             port = response['message'].split()[3]
             await self.start_conference(port)
 
@@ -139,9 +138,8 @@ class ConferenceClient:
         start necessary running task for conference
         """
         import os
-        #os.system("python ui.py")
-        reader, writer = await asyncio.open_connection(config.SERVER_IP, port)
-        self.task = asyncio.create_task(self.run(reader, writer))
+        self.on_meeting = True
+        os.system("python ui.py -port {port}")
 
     def close_conference(self):
         """
