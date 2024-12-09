@@ -9,3 +9,6 @@ This is the project of CS305 Computer Network in SUSTech
 3. **在第一次连接时候会让用户进行一个认证，相当于是一个注册登录的过程**
 
 4. Mainserver的response: {"status": True/False, "message": "string"} or {"status": True/False, "error": "string"}
+
+
+**view**在多个会议的时候会有问题

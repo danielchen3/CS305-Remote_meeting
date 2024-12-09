@@ -139,7 +139,7 @@ class ConferenceClient:
         start necessary running task for conference
         """
         import ui
-        await asyncio.create_task(ui.start(config.SERVER_IP, port))
+        ui.run(config.SERVER_IP, port)
         #await os.system(f"python ui.py -port={port}")
 
     def close_conference(self):
