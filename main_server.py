@@ -212,7 +212,7 @@ class MainServer:
                     break
                 else:
                     response = {"status": False, "error": "Unknown request type"}
-
+                print(response)
                 writer.write(json.dumps(response).encode())
                 await writer.drain()
             except Exception as e:

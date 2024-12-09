@@ -1,6 +1,7 @@
 #from util import *
 import config
 import asyncio
+import multiprocessing
 import json
 class ConferenceClient:
     def __init__(
@@ -34,9 +35,9 @@ class ConferenceClient:
         print(f'receive response is {response}')
         if response['status'] == True:
             ID = response['message'].split()[2]
-            port = response['message'].split()[3]
+            # port = response['message'].split()[3]
             print(f'Create a meeting {ID}')
-            await self.join_conference(ID)
+            return ID
     async def join_conference(self, conference_id):
         """
         join a conference: send join-conference request with given conference_id, and obtain necessary data to
@@ -50,9 +51,9 @@ class ConferenceClient:
         response = json.loads(data.decode())
         print(f'receive response is {response}')
         if response['status'] == True:
+            self.on_meeting = True
             port = response['message'].split()[3]
-            task = asyncio.create_task(self.start_conference(port))
-            # await task
+            return port
 
     async def quit_conference(self):
         """
@@ -68,7 +69,6 @@ class ConferenceClient:
         if response['status'] == True:
             print(f'Quit successfully')
             self.on_meeting = False
-            await self.close_conference()
             
     async def cancel_conference(self):
         """
@@ -138,9 +138,8 @@ class ConferenceClient:
         and
         start necessary running task for conference
         """
-        self.on_meeting = True
         import ui
-        asyncio.run(ui.start(config.SERVER_IP, port))
+        await asyncio.create_task(ui.start(config.SERVER_IP, port))
         #await os.system(f"python ui.py -port={port}")
 
     def close_conference(self):
@@ -182,9 +181,13 @@ class ConferenceClient:
                 if cmd_input in ("?", "？"):
                     print(config.HELP)
                 elif cmd_input == "create":
-                    await self.create_conference()
+                    ID = await self.create_conference()
+                    PORT = await self.join_conference(ID)
+                    await self.start_conference(PORT)
+                    await self.quit_conference()
                 elif cmd_input == "quit":
                     await self.quit_conference()
+                    self.close_conference()
                 elif cmd_input == "cancel":
                     await self.cancel_conference()
                 elif cmd_input == 'view':
@@ -197,7 +200,9 @@ class ConferenceClient:
                 if fields[0] == "join":
                     input_conf_id = fields[1]
                     if input_conf_id.isdigit():
-                        await self.join_conference(input_conf_id)
+                        PORT = await self.join_conference(input_conf_id)
+                        await self.start_conference(PORT)
+                        await self.quit_conference()
                     else:
                         print("[Warn]: Input conference ID must be in digital form")
                 elif fields[0] == "switch":
