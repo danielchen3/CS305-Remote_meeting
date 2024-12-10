@@ -3,6 +3,8 @@ import config
 import asyncio
 import multiprocessing
 import json
+import time
+from ui import start_ui
 class ConferenceClient:
     def __init__(
         self,
@@ -138,9 +140,7 @@ class ConferenceClient:
         and
         start necessary running task for conference
         """
-        import ui
-        ui.run(config.SERVER_IP, port)
-        #await os.system(f"python ui.py -port={port}")
+        await start_ui(config.SERVER_IP, port)
 
     def close_conference(self):
         """

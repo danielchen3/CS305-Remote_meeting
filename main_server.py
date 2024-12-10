@@ -1,5 +1,6 @@
 import asyncio
-from util import *
+from config import *
+# from util import *
 from conf_server import ConferenceServer
 import json
 from collections import defaultdict
@@ -98,7 +99,7 @@ class MainServer:
             "message": f"Create conference {conference_id} {free_port} successfully",
         }
 
-    async def handle_join_conference(self, user_id, conference_id):
+    def handle_join_conference(self, user_id, conference_id):
         """
         join conference: search corresponding conference_info and ConferenceServer, and reply necessary info to client
         """
@@ -185,14 +186,16 @@ class MainServer:
             user_id = await self.authenticate_user(reader, writer)
             if not user_id:
                 return  # 认证失败，断开连接
-
         while True:
             try:
+                print("start awaiting")
                 data = await reader.read(100)
+                print("finish awaiting")
                 if not data:
                     break  # 客户端断开连接
 
                 message = json.loads(data.decode())
+                print(f'receive {message}')
                 response = {}
 
                 # 根据请求类型处理
@@ -200,7 +203,7 @@ class MainServer:
                     response = self.handle_create_conference(user_id)
                 elif message["type"] == "join":
                     conference_id = message["conference_id"]
-                    response = await self.handle_join_conference(user_id, conference_id)
+                    response = self.handle_join_conference(user_id, conference_id)
                 elif message["type"] == "quit":
                     response = self.handle_quit_conference(user_id)
                 elif message["type"] == "cancel":
@@ -215,6 +218,7 @@ class MainServer:
                 print(response)
                 writer.write(json.dumps(response).encode())
                 await writer.drain()
+                print("finish writing")
             except Exception as e:
                 print(f"Error: {e}")
                 break

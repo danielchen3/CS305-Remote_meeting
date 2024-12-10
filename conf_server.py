@@ -29,7 +29,8 @@ class ConferenceServer:
         while self.running:
             data = await reader.read(100)
             #message = data.decode()
-            await writer.write(data)
+            writer.write(data)
+            await writer.drain()
             # if message.startswith('camera:'):
             #     # 启动视频流处理
             #     loop = asyncio.get_event_loop()
