@@ -140,7 +140,7 @@ class ConferenceClient:
         and
         start necessary running task for conference
         """
-        await start_ui(config.SERVER_IP, port)
+        start_ui(self.id, config.SERVER_IP, port)
 
     def close_conference(self):
         """

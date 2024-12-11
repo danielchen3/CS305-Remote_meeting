@@ -23,16 +23,18 @@ def update_image(label):
 
 
 # 处理回车键输入的函数
-text = None
-def on_enter_pressed(entry_box, output_label):
+def on_enter_pressed(entry_box):
+    global text
     entered_text = entry_box.get()
     text = entered_text
     entry_box.delete(0, tk.END)
-def on_closing(sock, window):
-    sock.close()  # 关闭socket连接
-    window.destroy()  # 关闭窗口
-
 # 更新语音输入并返回语音的函数
+def add_message(chat_box, message):
+    chat_box.config(state=tk.NORMAL)  # 使聊天框可编辑
+    chat_box.insert(tk.END, message + '\n')  # 在聊天框中插入消息
+    chat_box.yview(tk.END)  # 滚动到最后一行
+    chat_box.config(state=tk.DISABLED)  # 禁用编辑
+
 def update_voice():
     print("start voice")
     while True:
@@ -50,22 +52,52 @@ def update_voice():
         time.sleep(0.01)  # 每秒检测一次语音输入
 import asyncio
 import json
-async def sendtext(ip, port):
+async def send(id, ip, port):
     reader, writer = await asyncio.open_connection(ip, port)
+    global text
+    message = {'test':False}
+    writer.write(json.dumps(message).encode())
+    await writer.drain()
     while True:
         if text:
-            message = {'text': text}
+            message = {'text': id + ':' + text}
             writer.write(json.dumps(message).encode())
             await writer.drain()
-            data = await reader.read(100)
-            response = json.loads(data.decode())
-            print(f'receive response is {response}')
+            print('text 发送成功!')
+            # data = await reader.read(100)
+            # response = json.loads(data.decode())
+            # print(f'receive response is {response}')
             text = None
+async def update(id, ip, port, chat_box):
+    reader, writer = await asyncio.open_connection(ip, port)
+    message = {'test':True}
+    writer.write(json.dumps(message).encode())
+    await writer.drain()
+    while True:
+        data = await reader.read(100)
+        message = json.loads(data.decode())
+        if 'text' in message:
+            tmp_text = message['text']
+            if tmp_text.startwith(id):
+                tmp_text = 'Me' + tmp_text[len(id):]
+                add_message(chat_box, tmp_text)
+def start_async_task1(id, ip, port):
+    loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
+    asyncio.set_event_loop(loop)  # 设置事件循环
+    loop.run_until_complete(send(id, ip, port))  # 运行异步函数
 
-async def start_ui(ip, port):
+def start_async_task2(id, ip, port, chat_box):
+    loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
+    asyncio.set_event_loop(loop)  # 设置事件循环
+    loop.run_until_complete(update(id, ip, port, chat_box))  # 运行异步函数
+
+
+def start_ui(id, ip, port):
     # 初始化 pygame 的音频模块（确保只初始化一次）
     # pygame.mixer.init()
     # 创建主窗口
+    global text
+    text = None
     window = tk.Tk()
     window.title("Conference Detail")
     # 创建主界面框架，使用grid布局
@@ -86,12 +118,16 @@ async def start_ui(ip, port):
     entry_box = tk.Entry(right_frame)
     entry_box.pack()
     # 用于显示输入文本的标签
-    output_label = tk.Label(right_frame, text="显示的文本会出现在这里")
-    output_label.pack()
+    chat_box = tk.Text(right_frame, height=10, width=50, state=tk.DISABLED)
+    chat_box.pack()
     # 绑定回车键事件
-    sendtext_thread = threading.Thread(target=sendtext, args = (ip, port))
+    sendtext_thread = threading.Thread(target=start_async_task1, args = (id, ip, port))
     sendtext_thread.start()
-    entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box, output_label))
+    
+    #thread = threading.Thread(target=start_async_task2, args = (id, ip, port, chat_box))
+    #thread.start()
+    
+    entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box))
 
     # # # 启动图像更新线程
     # image_thread = threading.Thread(target=update_image, args=(label,), daemon=True)
@@ -100,6 +136,5 @@ async def start_ui(ip, port):
     # # 启动语音更新线程
     # voice_thread = threading.Thread(target=update_voice, daemon=True)
     # voice_thread.start()
-    window.protocol("WM_DELETE_WINDOW", lambda: on_closing(window))
     # 启动 Tkinter 主循环
     window.mainloop()
