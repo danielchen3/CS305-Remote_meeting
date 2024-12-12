@@ -10,7 +10,7 @@ import pyautogui
 import numpy as np
 from PIL import Image, ImageGrab
 from config import *
-
+import base64
 
 # audio setting
 FORMAT = pyaudio.paInt16
@@ -151,7 +151,9 @@ def decompress_image(image_bytes):
     :param image_bytes: bytes, compressed data
     :return: PIL.Image
     """
-    img_byte_arr = BytesIO(image_bytes)
+    # 解码 Base64 字符串
+    compressed_bytes = base64.b64decode(image_bytes)
+    img_byte_arr = BytesIO(compressed_bytes)
     image = Image.open(img_byte_arr)
 
     return image

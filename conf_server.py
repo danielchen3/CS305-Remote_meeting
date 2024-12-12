@@ -7,18 +7,18 @@ async def _write_data(writer, data):
     await writer.drain()
 
 
-async def _write_data(writer, data):
-    writer.write(data)
-    await writer.drain()
-
-
 class ConferenceServer:
     def __init__(self, free_port):
         self.conf_serve_ports = free_port
         self.data_serve_ports = {}
         self.data_types = ["screen", "camera", "audio"]
-        self.reader_list = {}
-        self.writer_list = {}
+        # 不同类型中存储不同类型对应用户的reader,writer 对应关系ex. id -> text writer/reader
+        self.reader_list_text = {}
+        self.writer_list_text = {}
+        self.reader_list_video = {}
+        self.writer_list_video = {}
+        self.reader_list_audio = {}
+        self.writer_list_audio = {}
         self.running = True
 
     async def handle_data(self, reader, writer, data_type):
@@ -34,10 +34,10 @@ class ConferenceServer:
                     await conn.write(f"{data_type}:{data}".encode())
         pass
 
-    async def write_data(self, data):
+    async def write_data_txt(self, data):
         tasks = []  # 用于存储所有的写入任务
         # x = 0
-        for writer in self.writer_list.values():
+        for writer in self.writer_list_text.values():
             # x += 1
             # print(x)
             # 创建写入数据的协程任务
@@ -46,11 +46,11 @@ class ConferenceServer:
             # print(x)
         await asyncio.gather(*tasks)
         # print(0)
-
-    async def write_data(self, data):
+        
+    async def write_data_video(self, data):
         tasks = []  # 用于存储所有的写入任务
         # x = 0
-        for writer in self.writer_list.values():
+        for writer in self.writer_list_video.values():
             # x += 1
             # print(x)
             # 创建写入数据的协程任务
@@ -65,22 +65,35 @@ class ConferenceServer:
         data = await reader.read(100)
         message = json.loads(data.decode())
         client_id = message.get("client_id")
-
+        type = message.get("type")
+        
         print(f"get client: {client_id}")
-
-        if client_id:
-            self.reader_list[client_id] = reader
-            self.writer_list[client_id] = writer
+        
+        if type == "text" and client_id:
+            self.reader_list_text[client_id] = reader
+            self.writer_list_text[client_id] = writer
             print(
-                f"handle_client in id {client_id} with writer_list length is{len(self.writer_list)}"
+                f"handle_client in id text {client_id} with writer_list length is{len(self.writer_list_text)}"
+            )
+        elif type == "video" and client_id:
+            self.reader_list_video[client_id] = reader
+            self.writer_list_video[client_id] = writer
+            print(
+                f"handle_client in id video {client_id} with writer_list length is{len(self.writer_list_video)}"
             )
         while self.running:
-            print("handle_client start awaiting")
-            data = await reader.read(100)
-            message = data.decode()
-            print(f"handle_client receive data is{message}")
-            await self.write_data(data)
-            await self.write_data(data)
+            # print("handle_client start awaiting")
+            if(type == "text"):
+                data = await reader.read(100)
+                message = data.decode()
+                print(f"handle_client receive text is{message}")
+                await self.write_data_txt(data)
+            elif(type == "video"):
+                data = await reader.read(1000000)
+                message = data.decode()
+                # print(f"handle_client receive video is{message}")
+                await self.write_data_video(data)
+            # TODO: add audio here
             # if message.startswith('camera:'):
             #     # 启动视频流处理
             #     loop = asyncio.get_event_loop()
@@ -106,7 +119,11 @@ class ConferenceServer:
 
     async def cancel_conference(self):
         self.running = False
-        for conn in self.writer_list.values():
+        for conn in self.writer_list_text.values():
+            conn.close()
+        for conn in self.writer_list_video.values():
+            conn.close()
+        for conn in self.writer_list_audio.values():
             conn.close()
         await asyncio.sleep(1)  # 等待连接关闭
         # del self.main_server.conference_servers[self.conference_id]
