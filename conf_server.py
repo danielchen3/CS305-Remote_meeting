@@ -2,6 +2,11 @@ import asyncio
 import json
 
 
+async def _write_data(writer, data):
+    writer.write(data)
+    await writer.drain()
+
+
 class ConferenceServer:
     def __init__(self, free_port):
         self.conf_serve_ports = free_port
@@ -24,6 +29,19 @@ class ConferenceServer:
                     await conn.write(f"{data_type}:{data}".encode())
         pass
 
+    async def write_data(self, data):
+        tasks = []  # 用于存储所有的写入任务
+        # x = 0
+        for writer in self.writer_list.values():
+            # x += 1
+            # print(x)
+            # 创建写入数据的协程任务
+            task = asyncio.create_task(_write_data(writer, data))
+            tasks.append(task)
+            # print(x)
+        await asyncio.gather(*tasks)
+        # print(0)
+
     async def handle_client(self, reader, writer):
         client_id = writer.get_extra_info("client_id")
         self.reader_list[client_id] = reader
@@ -33,8 +51,7 @@ class ConferenceServer:
             data = await reader.read(100)
             message = data.decode()
             print(f"handle_client receive data is{message}")
-            writer.write(data)
-            await writer.drain()
+            await self.write_data(data)
             # if message.startswith('camera:'):
             #     # 启动视频流处理
             #     loop = asyncio.get_event_loop()
@@ -76,5 +93,6 @@ class ConferenceServer:
         server = await asyncio.start_server(
             self.handle_client, "127.0.0.1", self.conf_serve_ports
         )
-        await server.serve_forever()
         print("pass")
+        await server.serve_forever()
+
