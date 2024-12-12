@@ -1,14 +1,16 @@
 import asyncio
 from config import *
+
 # from util import *
 from conf_server import ConferenceServer
 import json
 from collections import defaultdict
 import socket
 
+
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('localhost', 0))  # 绑定到端口0，操作系统自动分配空闲端口
+        s.bind(("localhost", 0))  # 绑定到端口0，操作系统自动分配空闲端口
         return s.getsockname()[1]  # 返回绑定的端口号
 
 
@@ -35,6 +37,7 @@ class MainServer:
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
         self.conference_port = {}
+
     async def authenticate_user(self, reader, writer):
         """
         Authenticate the user on connection and store user ID.
@@ -83,9 +86,7 @@ class MainServer:
         print("Start create conf...")
         conference_id = len(self.conference_servers) + 1
         free_port = get_free_port()
-        conf_server = ConferenceServer(
-            free_port
-        )
+        conf_server = ConferenceServer(free_port)
         print(f"user_id:{user_id} create conference:{conference_id}Port:{free_port}")
         self.conference_servers[conference_id] = conf_server
         # 将user_id加入创建者名单
@@ -110,7 +111,9 @@ class MainServer:
 
         # # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
         # asyncio.create_task(self.conference_servers[conference_id].accept_clients(self.reader_connect[user_id], self.writer_connect[user_id]))
-        print(f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}.")
+        print(
+            f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}."
+        )
         return {
             "status": True,
             "message": f"Joined Conference {conference_id} {self.conference_port[conference_id]} successfully",
@@ -170,6 +173,12 @@ class MainServer:
             {"conference_id": conf_id, "creator": self.conference_creators[conf_id]}
             for conf_id in self.conference_servers
         ]
+
+        formatted_conferences = "; ".join(
+            f"conference_id {conf['conference_id']}(created by {conf['creator']}"
+            for conf in active_conferences
+        )
+
         return {"status": True, "message": active_conferences}
 
     async def request_handler(self, reader, writer):
@@ -177,9 +186,9 @@ class MainServer:
         running task: handle out-meeting (or also in-meeting) requests from clients
         """
         # 第一次连接请求用户发送自己的id进行认证
-        
+
         print("get_user")
-        
+
         user_id = self.get_user_id(writer)
         # 如果没有认证，需要进行认证
         if not user_id:
@@ -195,7 +204,7 @@ class MainServer:
                     break  # 客户端断开连接
 
                 message = json.loads(data.decode())
-                print(f'receive {message}')
+                print(f"receive {message}")
                 response = {}
 
                 # 根据请求类型处理

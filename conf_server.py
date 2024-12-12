@@ -59,7 +59,7 @@ class ConferenceServer:
         for conn in self.writer_list.values():
             conn.close()
         await asyncio.sleep(1)  # 等待连接关闭
-        del self.main_server.conference_servers[self.conference_id]
+        # del self.main_server.conference_servers[self.conference_id]
 
     async def start(self):
         print("start")
