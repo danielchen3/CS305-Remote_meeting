@@ -199,8 +199,11 @@ def start_ui(id, ip, port):
     entry_box.pack(padx=5, pady=5)
 
     # 用于显示输入文本的Text控件
-    text_widget = tk.Text(right_frame, height=15, width=50, state=tk.DISABLED)
-    text_widget.pack(padx=5, pady=5)
+    scrollbar = tk.Scrollbar(right_frame)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    text_widget = tk.Text(right_frame, height=15, width=50, state=tk.DISABLED, yscrollcommand=scrollbar.set)
+    text_widget.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
+    scrollbar.config(command=text_widget.yview)
     # 用于显示输入文本的标签
     # chat_box = tk.Text(right_frame, height=10, width=50, state=tk.DISABLED)
     # chat_box.pack()
