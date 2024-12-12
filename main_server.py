@@ -36,7 +36,7 @@ class MainServer:
         )  # writer -> user_id # writer对于每个连接都是唯一的，所以可以直接使用，然后exit之后会清理writer
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
-        self.conference_port = {}
+        self.conference_port = {} #conference_id -> PORT
 
     async def authenticate_user(self, reader, writer):
         """
