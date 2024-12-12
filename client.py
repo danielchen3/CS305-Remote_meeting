@@ -210,6 +210,7 @@ class ConferenceClient:
                     input_conf_id = fields[1]
                     if input_conf_id.isdigit():
                         PORT = await self.join_conference(input_conf_id)
+                        print(f"get port join is{PORT}")
                         await self.start_conference(PORT)
                         await self.quit_conference()
                     else:
