@@ -9,7 +9,7 @@ import base64
 import re
 
 from collections import defaultdict
-labels = defaultdict(set)
+
 
 # 处理回车键输入的函数
 def on_enter_pressed(entry_box):
@@ -29,6 +29,7 @@ def add_message(chat_box, message):
 
 import asyncio
 import json
+cnt = 0
 
 
 # def parse_multiple_json_objects(data_str):
@@ -65,7 +66,10 @@ async def video_send_receive(id, ip, port):
 
     reader, writer = await asyncio.open_connection(ip, port)
 
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.3)
+    
+    labels = {}
+    global cnt
 
     # 发送包含 id 的消息
     message = {"client_id": id, "type": "video"}
@@ -92,6 +96,7 @@ async def video_send_receive(id, ip, port):
             await asyncio.sleep(0.1)
 
     async def display_video():
+        global cnt
         while True:
             data = await reader.read(1000000)
             if not data:
@@ -115,28 +120,41 @@ async def video_send_receive(id, ip, port):
 
                         tk_image = ImageTk.PhotoImage(received_image)
                         id = parts[0]
-                        if id in labels:
+                        
+                        # 使用 .keys() 方法获取所有的键
+                        # print("All keys in labels:", list(labels.keys())) 
+                        if id in labels.keys():
                             print(f"detect exist id: {id}")
                             print(f"For now, we have label is {labels[id]}")
-                            label = labels[id]
-                            label.config(image=tk_image)
-                            label.image = (
+                            label1 = labels.get(id)
+                            label1.config(image=tk_image)
+                            label1.image = (
                                 tk_image  # Keep reference to avoid garbage collection
                             )
                         else:
                             # If the label doesn't exist, create a new one
-                            label = tk.Label(left_frame, relief="solid", image=tk_image)
-                            label.image = (
+                            print(f"detect not exist id {id}")
+                            # Create the first label
+                            label1 = tk.Label(
+                                left_frame, relief="solid", image=tk_image
+                            )
+                            label1.image = (
                                 tk_image  # Keep reference to avoid garbage collection
                             )
-                            
+                            label1.grid(
+                                row=0, column=cnt, padx=10, pady=10
+                            )  # Place in grid at (row=0, column=0)
+                            cnt += 1
+
+                            labels[id] = label1
+
                             # TODO: reschedule
-                            
-                            label.pack(
-                                fill="x", anchor="w"
-                            )  # Only pack if it's a new label
-                            label.grid(row=2, column=1, sticky="w")
-                            labels[id] = label  # Store the label in the dictionary
+
+                            # label.pack(
+                            #     fill="x", anchor="w"
+                            # )  # Only pack if it's a new label
+                            # label.grid(row=2, column=1, sticky="w")
+                            # labels[id] = label  # Store the label in the dictionary
                         #     label = tk.Label(left_frame, relief="solid")
                         #     label.pack(fill=tk.X)
                         #     labels[id] = label
@@ -239,6 +257,7 @@ def start_async_task_video(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
     loop.run_until_complete(video_send_receive(id, ip, port))  # 运行异步函数
+
 
 # cnt = 0
 
