@@ -89,8 +89,8 @@ async def video_send_receive(id, ip, port, labels):
                         if id in labels:
                             label = labels[id]
                         else:
-                            label = tk.Label(left_frame, text=f'User_Id {id}')
-                            label.pack(pady=500, fill=tk.X)
+                            label = tk.Label(left_frame, relief="solid")
+                            label.pack(fill=tk.X)
                             labels[id] = label
                         label.config(image=tk_image)
                         label.image = tk_image  # Keep a reference to avoid garbage collection
