@@ -90,7 +90,7 @@ async def video_send_receive(id, ip, port, labels):
                             label = labels[id]
                         else:
                             label = tk.Label(left_frame, text=f'User_Id {id}')
-                            label.pack(pady=5, fill=tk.X)
+                            label.pack(pady=500, fill=tk.X)
                             labels[id] = label
                         label.config(image=tk_image)
                         label.image = tk_image  # Keep a reference to avoid garbage collection
@@ -206,7 +206,7 @@ def start_ui(id, ip, port):
     left_frame = tk.Frame(frame, bg="gray")  # 设置背景颜色为灰色，模拟空白区域
     left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
     left_frame.pack_propagate(False)  # 防止frame根据内容自适应大小
-    left_frame.config(width=400, height=300)  # 固定大小
+    left_frame.config(width=400, height=1500)  # 固定大小
     # label = tk.Label(left_frame)
     # label.pack(expand=True, fill=tk.BOTH)
     # # TODO: 应该是要创造一个新的label,然后按照一定的排列方式呈现
