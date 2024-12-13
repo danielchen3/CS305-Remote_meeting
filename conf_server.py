@@ -1,6 +1,6 @@
 import asyncio
 import json
-
+import config
 
 async def _write_data(writer, data):
     writer.write(data)
@@ -137,7 +137,7 @@ class ConferenceServer:
 
     async def accept_clients(self):
         server = await asyncio.start_server(
-            self.handle_client, "127.0.0.1", self.conf_serve_ports
+            self.handle_client, config.SERVER_IP, self.conf_serve_ports
         )
         print("pass")
         print("pass")

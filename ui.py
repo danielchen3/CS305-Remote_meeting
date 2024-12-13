@@ -26,7 +26,19 @@ def add_message(chat_box, message):
 
 import asyncio
 import json
-
+def parse_multiple_json_objects(data_str):
+    objects = []
+    while data_str:
+        try:
+            # 尝试解码一个 JSON 对象
+            obj, idx = json.JSONDecoder().raw_decode(data_str)
+            objects.append(obj)
+            # 剩余的部分
+            data_str = data_str[idx:].strip()
+        except json.JSONDecodeError as e:
+            print("Error decoding JSON:", e)
+            break
+    return objects
 
 async def video_send_receive(id, ip, port, labels):
     reader, writer = await asyncio.open_connection(ip, port)
@@ -63,22 +75,27 @@ async def video_send_receive(id, ip, port, labels):
             if not data:
                 print("Server closed the connection.")
                 break
+            objects = parse_multiple_json_objects(data.decode())
+            #print(objects)
+            for message in objects:
+                #print(message)
+                try:
+                    if "video" in message:
+                        compressed_data = message["video"]
+                        received_image = decompress_image(compressed_data)
 
-            message = json.loads(data.decode())
-            if "video" in message:
-                compressed_data = message["video"]
-                received_image = decompress_image(compressed_data)
-
-                tk_image = ImageTk.PhotoImage(received_image)
-                id = message['ID']
-                if id in labels:
-                    label = labels[id]
-                else:
-                    label = tk.Label(left_frame, text=f'User_Id {id}')
-                    label.pack(pady=5, fill=tk.X)
-                    labels[id] = label
-                label.config(image=tk_image)
-                label.image = tk_image  # Keep a reference to avoid garbage collection
+                        tk_image = ImageTk.PhotoImage(received_image)
+                        id = message['ID']
+                        if id in labels:
+                            label = labels[id]
+                        else:
+                            label = tk.Label(left_frame, text=f'User_Id {id}')
+                            label.pack(pady=5, fill=tk.X)
+                            labels[id] = label
+                        label.config(image=tk_image)
+                        label.image = tk_image  # Keep a reference to avoid garbage collection
+                except:
+                    print('error!!!!!!!!!!')
 
     # 创建并发任务
     send_task = asyncio.create_task(capture_video())
