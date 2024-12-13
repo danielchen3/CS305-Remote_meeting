@@ -36,7 +36,7 @@ class MainServer:
         )  # writer -> user_id # writer对于每个连接都是唯一的，所以可以直接使用，然后exit之后会清理writer
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
-        self.conference_port = {} #conference_id -> PORT
+        self.conference_port = {}  # conference_id -> PORT
 
     async def authenticate_user(self, reader, writer):
         """
@@ -159,8 +159,8 @@ class MainServer:
         del self.conference_creators[conference_id]
 
         # 把会议编号从每个参会者参会列表中移除
-        for participants in self.user_conferences.values():
-            participants.discard(conference_id)
+        # for participants in self.user_conferences.values():
+        #     participants.discard(conference_id)
 
         print(f"Conference {conference_id} canceled by {user_id}.")
         return {"status": True, "message": f"Conference {conference_id} canceled"}
@@ -234,7 +234,7 @@ class MainServer:
 
         # 连接断开时清理信息
         self.client_connections.discard(writer)
-        self.user_conferences.discard(user_id)
+        # self.user_conferences.discard(user_id)
         writer.close()
         await writer.wait_closed()
         print(f"User {user_id} disconnected.")

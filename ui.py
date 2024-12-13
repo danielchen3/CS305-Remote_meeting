@@ -6,7 +6,10 @@ import pygame
 import threading
 import socket
 import base64
+import re
 
+from collections import defaultdict
+labels = defaultdict(set)
 
 # 处理回车键输入的函数
 def on_enter_pressed(entry_box):
@@ -26,21 +29,40 @@ def add_message(chat_box, message):
 
 import asyncio
 import json
-def parse_multiple_json_objects(data_str):
-    objects = []
-    while data_str:
-        try:
-            # 尝试解码一个 JSON 对象
-            obj, idx = json.JSONDecoder().raw_decode(data_str)
-            objects.append(obj)
-            # 剩余的部分
-            data_str = data_str[idx:].strip()
-        except json.JSONDecodeError as e:
-            print("Error decoding JSON:", e)
-            break
-    return objects
 
-async def video_send_receive(id, ip, port, labels):
+
+# def parse_multiple_json_objects(data_str):
+#     objects = []
+#     while data_str:
+#         try:
+#             # 尝试解码一个 JSON 对象
+#             obj, idx = json.JSONDecoder().raw_decode(data_str)
+#             objects.append(obj)
+#             # 剩余的部分
+#             data_str = data_str[idx:].strip()
+#         except json.JSONDecodeError as e:
+#             print("Error decoding JSON:", e)
+#             break
+#     return objects
+
+
+def parse_multiple_json_objects(data):
+    # 使用正则表达式查找所有JSON对象
+    json_objects = re.findall(r"\{.*?\}", data.decode(), re.DOTALL)
+
+    # 解析每个JSON对象，丢弃不完整或无效的JSON对象
+    parsed_objects = []
+    for obj in json_objects:
+        try:
+            parsed_objects.append(json.loads(obj))
+        except json.JSONDecodeError:
+            # 如果解析失败，直接跳过这个对象
+            continue
+    return parsed_objects
+
+
+async def video_send_receive(id, ip, port):
+
     reader, writer = await asyncio.open_connection(ip, port)
 
     await asyncio.sleep(0.1)
@@ -50,7 +72,7 @@ async def video_send_receive(id, ip, port, labels):
     writer.write(json.dumps(message).encode())
     await writer.drain()  # 确保消息已发送
 
-    print(f"send our id: {message}")
+    print(f"send our id for video : {message}")
 
     async def capture_video():
 
@@ -62,12 +84,12 @@ async def video_send_receive(id, ip, port, labels):
 
             compressed_image_base64 = base64.b64encode(compressed_image).decode("utf-8")
 
-            message = {'ID': id, "video": compressed_image_base64}
+            message = {"video": f"{id}:{compressed_image_base64}"}
             writer.write(json.dumps(message).encode())
             await writer.drain()
 
             # 控制视频发送的频率
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(0.1)
 
     async def display_video():
         while True:
@@ -75,32 +97,61 @@ async def video_send_receive(id, ip, port, labels):
             if not data:
                 print("Server closed the connection.")
                 break
-            objects = parse_multiple_json_objects(data.decode())
-            #print(objects)
+            objects = parse_multiple_json_objects(data)
+            # print(objects)
             for message in objects:
-                #print(message)
+                # print(message)
                 try:
                     if "video" in message:
-                        compressed_data = message["video"]
-                        received_image = decompress_image(compressed_data)
+                        # compressed_data = message["video"]
+                        # received_image = decompress_image(compressed_data)
+
+                        temp_video = message["video"]
+                        # 按照id:image的格式把他们分开
+                        parts = temp_video.split(":", 1)
+                        received_image = decompress_image(parts[1])
+                        # print(f"part0 is {parts[0]}")
+                        # print(f"part1 is {parts[1]}")
 
                         tk_image = ImageTk.PhotoImage(received_image)
-                        id = message['ID']
+                        id = parts[0]
                         if id in labels:
+                            print(f"detect exist id: {id}")
+                            print(f"For now, we have label is {labels[id]}")
                             label = labels[id]
+                            label.config(image=tk_image)
+                            label.image = (
+                                tk_image  # Keep reference to avoid garbage collection
+                            )
                         else:
-                            label = tk.Label(left_frame, relief="solid")
-                            label.pack(fill=tk.X)
-                            labels[id] = label
-                        label.config(image=tk_image)
-                        label.image = tk_image  # Keep a reference to avoid garbage collection
-                                                
-                        # 更新 canvas 滚动区域
-                        global label_frame, canvas
-                        label_frame.update_idletasks()  # 更新 Frame 高度
-                        canvas.config(scrollregion=canvas.bbox("all"))  # 设置可滚动区域
+                            # If the label doesn't exist, create a new one
+                            label = tk.Label(left_frame, relief="solid", image=tk_image)
+                            label.image = (
+                                tk_image  # Keep reference to avoid garbage collection
+                            )
+                            
+                            # TODO: reschedule
+                            
+                            label.pack(
+                                fill="x", anchor="w"
+                            )  # Only pack if it's a new label
+                            label.grid(row=2, column=1, sticky="w")
+                            labels[id] = label  # Store the label in the dictionary
+                        #     label = tk.Label(left_frame, relief="solid")
+                        #     label.pack(fill=tk.X)
+                        #     labels[id] = label
+                        # label.config(image=tk_image)
+                        # label.image = (
+                        #     tk_image  # Keep a reference to avoid garbage collection
+                        # )
+
+                        # # 更新 canvas 滚动区域
+                        # global label_frame, canvas
+                        # label_frame.update_idletasks()  # 更新 Frame 高度
+                        # canvas.config(scrollregion=canvas.bbox("all"))  # 设置可滚动区域
                 except:
-                    print('error!!!!!!!!!!')
+                    # print('error!!!!!!!!!!')
+                    pass
 
     # 创建并发任务
     send_task = asyncio.create_task(capture_video())
@@ -126,7 +177,7 @@ async def text_send_receive(id, ip, port, chat_box):
     writer.write(json.dumps(message).encode())
     await writer.drain()  # 确保消息已发送
 
-    print(f"send our id: {message}")
+    print(f"send our id for text: {message}")
 
     async def send_messages():
         # 发送消息
@@ -184,14 +235,13 @@ def start_async_task_text(id, ip, port, chat_box):
     loop.run_until_complete(text_send_receive(id, ip, port, chat_box))  # 运行异步函数
 
 
-def start_async_task_video(id, ip, port, label):
+def start_async_task_video(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
-    loop.run_until_complete(video_send_receive(id, ip, port, label))  # 运行异步函数
+    loop.run_until_complete(video_send_receive(id, ip, port))  # 运行异步函数
 
-
-labels = {}
 # cnt = 0
+
 
 def start_ui(id, ip, port):
     # 初始化 pygame 的音频模块（确保只初始化一次）
@@ -241,7 +291,13 @@ def start_ui(id, ip, port):
     # 用于显示输入文本的Text控件
     scrollbar = tk.Scrollbar(right_frame)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    text_widget = tk.Text(right_frame, height=15, width=50, state=tk.DISABLED, yscrollcommand=scrollbar.set)
+    text_widget = tk.Text(
+        right_frame,
+        height=15,
+        width=50,
+        state=tk.DISABLED,
+        yscrollcommand=scrollbar.set,
+    )
     text_widget.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
     scrollbar.config(command=text_widget.yview)
     # 用于显示输入文本的标签
@@ -258,7 +314,7 @@ def start_ui(id, ip, port):
 
     # 启动视频流发送和接收的异步任务
     send_video_thread = threading.Thread(
-        target=start_async_task_video, args=(id, ip, port, labels)
+        target=start_async_task_video, args=(id, ip, port)
     )
     send_video_thread.start()
 
