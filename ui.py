@@ -28,7 +28,7 @@ import asyncio
 import json
 
 
-async def video_send_receive(id, ip, port, label):
+async def video_send_receive(id, ip, port, labels):
     reader, writer = await asyncio.open_connection(ip, port)
 
     await asyncio.sleep(0.1)
@@ -50,7 +50,7 @@ async def video_send_receive(id, ip, port, label):
 
             compressed_image_base64 = base64.b64encode(compressed_image).decode("utf-8")
 
-            message = {"video": compressed_image_base64}
+            message = {'ID': id, "video": compressed_image_base64}
             writer.write(json.dumps(message).encode())
             await writer.drain()
 
@@ -70,7 +70,13 @@ async def video_send_receive(id, ip, port, label):
                 received_image = decompress_image(compressed_data)
 
                 tk_image = ImageTk.PhotoImage(received_image)
-
+                id = message['ID']
+                if id in labels:
+                    label = labels[id]
+                else:
+                    label = tk.Label(left_frame, text=f'User_Id {id}')
+                    label.pack(pady=5, fill=tk.X)
+                    labels[id] = label
                 label.config(image=tk_image)
                 label.image = tk_image  # Keep a reference to avoid garbage collection
 
@@ -163,8 +169,7 @@ def start_async_task_video(id, ip, port, label):
 
 
 labels = {}
-cnt = 0
-
+# cnt = 0
 
 def start_ui(id, ip, port):
     # 初始化 pygame 的音频模块（确保只初始化一次）
@@ -179,16 +184,16 @@ def start_ui(id, ip, port):
     # 创建主界面框架，使用grid布局
     frame = tk.Frame(window)
     frame.pack(expand=True, fill=tk.BOTH)
-
+    global left_frame
     # 左侧：用于显示摄像头图像的占位符（空白块）
     left_frame = tk.Frame(frame, bg="gray")  # 设置背景颜色为灰色，模拟空白区域
     left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
     left_frame.pack_propagate(False)  # 防止frame根据内容自适应大小
     left_frame.config(width=400, height=300)  # 固定大小
-    label = tk.Label(left_frame)
-    label.pack(expand=True, fill=tk.BOTH)
-    # TODO: 应该是要创造一个新的label,然后按照一定的排列方式呈现
-    labels[cnt] = label
+    # label = tk.Label(left_frame)
+    # label.pack(expand=True, fill=tk.BOTH)
+    # # TODO: 应该是要创造一个新的label,然后按照一定的排列方式呈现
+    # labels[cnt] = label
 
     # 右侧：输入文本区域
     right_frame = tk.Frame(frame)
@@ -218,7 +223,7 @@ def start_ui(id, ip, port):
 
     # 启动视频流发送和接收的异步任务
     send_video_thread = threading.Thread(
-        target=start_async_task_video, args=(id, ip, port, labels[cnt])
+        target=start_async_task_video, args=(id, ip, port, labels)
     )
     send_video_thread.start()
 
