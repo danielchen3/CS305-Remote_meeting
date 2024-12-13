@@ -94,6 +94,11 @@ async def video_send_receive(id, ip, port, labels):
                             labels[id] = label
                         label.config(image=tk_image)
                         label.image = tk_image  # Keep a reference to avoid garbage collection
+                                                
+                        # 更新 canvas 滚动区域
+                        global label_frame, canvas
+                        label_frame.update_idletasks()  # 更新 Frame 高度
+                        canvas.config(scrollregion=canvas.bbox("all"))  # 设置可滚动区域
                 except:
                     print('error!!!!!!!!!!')
 
@@ -206,7 +211,20 @@ def start_ui(id, ip, port):
     left_frame = tk.Frame(frame, bg="gray")  # 设置背景颜色为灰色，模拟空白区域
     left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
     left_frame.pack_propagate(False)  # 防止frame根据内容自适应大小
-    left_frame.config(width=400, height=1500)  # 固定大小
+    left_frame.config(width=800, height=1500)  # 固定大小
+
+    global convas, label_frame
+    # 创建一个 Canvas 用于滚动
+    canvas = tk.Canvas(left_frame)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    # 添加垂直滚动条
+    scrollbar = tk.Scrollbar(left_frame, orient="vertical", command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    canvas.config(yscrollcommand=scrollbar.set)
+    # 创建一个 Frame 来放置所有的 Label，实际的 Label 会放在这个 Frame 中
+    label_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=label_frame, anchor="nw")
+
     # label = tk.Label(left_frame)
     # label.pack(expand=True, fill=tk.BOTH)
     # # TODO: 应该是要创造一个新的label,然后按照一定的排列方式呈现
