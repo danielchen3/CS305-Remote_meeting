@@ -2,6 +2,7 @@ import asyncio
 import json
 import config
 
+
 async def _write_data(writer, data):
     writer.write(data)
     await writer.drain()
@@ -46,7 +47,7 @@ class ConferenceServer:
             # print(x)
         await asyncio.gather(*tasks)
         # print(0)
-        
+
     async def write_data_video(self, data):
         tasks = []  # 用于存储所有的写入任务
         # x = 0
@@ -54,10 +55,11 @@ class ConferenceServer:
             # x += 1
             # print(x)
             # 创建写入数据的协程任务
-            task = asyncio.create_task(_write_data(writer, data))
-            tasks.append(task)
+            await _write_data(writer=writer, data=data)
+            # task = asyncio.create_task(_write_data(writer, data))
+            # tasks.append(task)
             # print(x)
-        await asyncio.gather(*tasks)
+        # await asyncio.gather(*tasks)
         # print(0)
 
     async def handle_client(self, reader, writer):
@@ -66,9 +68,9 @@ class ConferenceServer:
         message = json.loads(data.decode())
         client_id = message.get("client_id")
         type = message.get("type")
-        
+
         print(f"get client: {client_id}")
-        
+
         if type == "text" and client_id:
             self.reader_list_text[client_id] = reader
             self.writer_list_text[client_id] = writer
@@ -83,13 +85,13 @@ class ConferenceServer:
             )
         while self.running:
             # print("handle_client start awaiting")
-            if(type == "text"):
+            if type == "text":
                 data = await reader.read(100)
                 message = data.decode()
                 print(f"handle_client receive text is{message}")
                 await self.write_data_txt(data)
-            elif(type == "video"):
-                data = await reader.read(1000000)
+            elif type == "video":
+                data = await reader.read(100000)
                 message = data.decode()
                 # print(f"handle_client receive video is{message}")
                 await self.write_data_video(data)

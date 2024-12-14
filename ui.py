@@ -93,12 +93,12 @@ async def video_send_receive(id, ip, port):
             await writer.drain()
 
             # 控制视频发送的频率
-            await asyncio.sleep(0.015)
+            await asyncio.sleep(0.1)
 
     async def display_video():
         global cnt
         while True:
-            data = await reader.read(1000000)
+            data = await reader.read(100000)
             if not data:
                 print("Server closed the connection.")
                 break
