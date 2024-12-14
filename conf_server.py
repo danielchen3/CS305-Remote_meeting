@@ -65,6 +65,7 @@ class ConferenceServer:
     async def handle_client(self, reader, writer):
 
         data = await reader.read(100)
+        print(f'data is {data}')
         message = json.loads(data.decode())
         client_id = message.get("client_id")
         type = message.get("type")

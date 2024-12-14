@@ -124,8 +124,8 @@ async def video_send_receive(id, ip, port):
                         # 使用 .keys() 方法获取所有的键
                         # print("All keys in labels:", list(labels.keys())) 
                         if id in labels.keys():
-                            print(f"detect exist id: {id}")
-                            print(f"For now, we have label is {labels[id]}")
+                            # print(f"detect exist id: {id}")
+                            # print(f"For now, we have label is {labels[id]}")
                             label1 = labels.get(id)
                             label1.config(image=tk_image)
                             label1.image = (
@@ -188,7 +188,7 @@ async def text_send_receive(id, ip, port, chat_box):
     # 建立连接
     reader, writer = await asyncio.open_connection(ip, port)
 
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.3)
 
     # 发送包含 id 的消息 标注type
     message = {"client_id": id, "type": "text"}
@@ -200,10 +200,6 @@ async def text_send_receive(id, ip, port, chat_box):
     async def send_messages():
         # 发送消息
         global text
-        message = {"test": False}
-        writer.write(json.dumps(message).encode())
-        await writer.drain()
-
         while True:
             if text:
                 message = {"text": f"{id}:{text}"}
