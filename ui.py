@@ -7,8 +7,26 @@ import threading
 import socket
 import base64
 import re
-
+from scipy.fftpack import fft, ifft
 from collections import defaultdict
+
+# 全局变量
+audio_thread = None
+audio_active = False
+
+
+def toggle_audioTransmission(thread):
+    global audio_thread, audio_active
+    if not audio_active:
+        # 启动音频传输线程
+        thread.start()
+        audio_active = True
+    else:
+        # 停止音频传输线程
+        # 这里需要实现一个机制来安全地停止线程，例如使用事件
+        audio_active = False
+        # 假设start_async_task_audio函数中有一个事件来控制线程的停止
+        # audio_thread.stop()  # 这只是一个示例，具体实现取决于start_async_task_audio函数的设计
 
 
 # 处理回车键输入的函数
@@ -29,6 +47,7 @@ def add_message(chat_box, message):
 
 import asyncio
 import json
+
 cnt = 0
 
 
@@ -63,11 +82,10 @@ def parse_multiple_json_objects(data):
 
 
 async def video_send_receive(id, ip, port):
-
     reader, writer = await asyncio.open_connection(ip, port)
 
     await asyncio.sleep(0.3)
-    
+
     labels = {}
     global cnt
 
@@ -120,7 +138,7 @@ async def video_send_receive(id, ip, port):
 
                         tk_image = ImageTk.PhotoImage(received_image)
                         id = parts[0]
-                        
+
                         # 使用 .keys() 方法获取所有的键
                         # print("All keys in labels:", list(labels.keys())) 
                         if id in labels.keys():
@@ -174,6 +192,87 @@ async def video_send_receive(id, ip, port):
     # 创建并发任务
     send_task = asyncio.create_task(capture_video())
     receive_task = asyncio.create_task(display_video())
+
+    try:
+        await asyncio.gather(send_task, receive_task)
+    except asyncio.CancelledError:
+        print("Tasks were cancelled.")
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+async def audio_send_receive(id, ip, port):
+    reader, writer = await asyncio.open_connection(ip, port)
+
+    await asyncio.sleep(0.3)
+
+    labels = {}
+    global cnt
+
+    # 发送包含 id 的消息
+    message = {"client_id": id, "type": "audio"}
+    writer.write(json.dumps(message).encode())
+    await writer.drain()  # 确保消息已发送
+
+    print(f"send our id for audio : {message}")
+
+    async def capture_audios():
+        stream = pyaudio.PyAudio().open(format=FORMAT,
+                                        channels=CHANNELS,
+                                        rate=RATE,
+                                        input=True,
+                                        frames_per_buffer=CHUNK)
+
+        # 捕获音频数据
+
+        while True:
+            cap_audio = stream.read(CHUNK)
+
+            cap_audio_base64 = base64.b64encode(cap_audio).decode("utf-8")
+
+            message = {"audio": f"{cap_audio_base64}"}
+
+            writer.write(json.dumps(message).encode())
+            await writer.drain()
+
+            # 控制视频发送的频率
+            await asyncio.sleep(0.001)
+
+    async def display_audio():
+        global cnt
+        audio = pyaudio.PyAudio()
+        stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)
+        while True:
+            data = await reader.read(10300)
+            if not data:
+                print("Server closed the connection.")
+                break
+            objects = parse_multiple_json_objects(data)
+            # print(objects)
+            for message in objects:
+                # print(message)
+
+                    if "audio" in message:
+                        # compressed_data = message["video"]
+                        # received_image = decompress_image(compressed_data)
+                        temp_audio = message["audio"]
+                        bytes_audio = base64.b64decode(temp_audio)
+                        audio_data = np.frombuffer(bytes_audio, dtype=np.int16)
+                        # 应用 FFT
+                        fft_data = fft(audio_data)
+                        # 设定阈值，过滤噪声
+                        threshold = 100  # 阈值需要根据实际情况调整
+                        fft_data[np.abs(fft_data) < threshold] = 0
+                        # 应用逆 FFT
+                        denoised_data = ifft(fft_data)
+                        # 将数据转换回字节串并播放
+                        denoised_data = np.real(denoised_data).astype(np.int16)
+                        stream.write(denoised_data.tobytes())
+
+    # 创建并发任务
+    send_task = asyncio.create_task(capture_audios())
+    receive_task = asyncio.create_task(display_audio())
 
     try:
         await asyncio.gather(send_task, receive_task)
@@ -255,6 +354,12 @@ def start_async_task_video(id, ip, port):
     loop.run_until_complete(video_send_receive(id, ip, port))  # 运行异步函数
 
 
+def start_async_task_audio(id, ip, port):
+    loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
+    asyncio.set_event_loop(loop)  # 设置事件循环
+    loop.run_until_complete(audio_send_receive(id, ip, port))  # 运行异步函数
+
+
 # cnt = 0
 
 
@@ -332,6 +437,16 @@ def start_ui(id, ip, port):
         target=start_async_task_video, args=(id, ip, port)
     )
     send_video_thread.start()
+
+    send_audio_thread = threading.Thread(
+        target=start_async_task_audio, args=(id, ip, port)
+    )
+    # 在start_ui函数中添加以下代码
+
+    # 音频控制按钮
+    audio_button = tk.Button(frame, text="Toggle Audio", command=lambda: toggle_audioTransmission(send_audio_thread))
+    audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
 
     entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box))
     # 启动 Tkinter 主循环

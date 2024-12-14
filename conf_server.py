@@ -22,19 +22,6 @@ class ConferenceServer:
         self.writer_list_audio = {}
         self.running = True
 
-    async def handle_data(self, reader, writer, data_type):
-        while self.running:
-            print("handle_data start awaiting")
-            data = await reader.read(1024)  # 读取一定量的数据
-            print(f"handle_data receive data is{data}")
-            if not data:
-                break
-            # 将数据转发给其他所有客户端
-            for client_id, conn in self.writer_list.items():
-                if client_id != writer.get_extra_info("client_id"):
-                    await conn.write(f"{data_type}:{data}".encode())
-        pass
-
     async def write_data_txt(self, data):
         tasks = []  # 用于存储所有的写入任务
         # x = 0
@@ -52,6 +39,21 @@ class ConferenceServer:
         tasks = []  # 用于存储所有的写入任务
         # x = 0
         for writer in self.writer_list_video.values():
+            # x += 1
+            # print(x)
+            # 创建写入数据的协程任务
+            await _write_data(writer=writer, data=data)
+            # task = asyncio.create_task(_write_data(writer, data))
+            # tasks.append(task)
+            # print(x)
+        # await asyncio.gather(*tasks)
+        # print(0)
+
+    async def write_data_audio(self, data):
+        tasks = []  # 用于存储所有的写入任务
+        # x = 0
+        for writer in self.writer_list_audio.values():
+
             # x += 1
             # print(x)
             # 创建写入数据的协程任务
@@ -84,6 +86,12 @@ class ConferenceServer:
             print(
                 f"handle_client in id video {client_id} with writer_list length is{len(self.writer_list_video)}"
             )
+        elif type == "audio" and client_id:
+            self.reader_list_audio[client_id] = reader
+            self.writer_list_audio[client_id] = writer
+            print(
+                f"handle_client in id audio {client_id} with writer_list length is{len(self.writer_list_audio)}"
+            )
         while self.running:
             # print("handle_client start awaiting")
             if type == "text":
@@ -96,6 +104,10 @@ class ConferenceServer:
                 message = data.decode()
                 # print(f"handle_client receive video is{message}")
                 await self.write_data_video(data)
+            elif type == "audio":
+                data = await reader.read(10300)
+                print(f"handle_client receive video is{data}")
+                await self.write_data_audio(data)
             # TODO: add audio here
             # if message.startswith('camera:'):
             #     # 启动视频流处理
