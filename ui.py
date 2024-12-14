@@ -82,7 +82,7 @@ async def video_send_receive(id, ip, port):
 
         while True:
             camera_image = capture_camera()
-
+            camera_image = camera_image.resize((200, 150), Image.LANCZOS)
             # 压缩图像
             compressed_image = compress_image(camera_image)
 
@@ -93,7 +93,7 @@ async def video_send_receive(id, ip, port):
             await writer.drain()
 
             # 控制视频发送的频率
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.015)
 
     async def display_video():
         global cnt
