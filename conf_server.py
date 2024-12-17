@@ -92,41 +92,31 @@ class ConferenceServer:
             print(
                 f"handle_client in id audio {client_id} with writer_list length is{len(self.writer_list_audio)}"
             )
-        while self.running:
-            # print("handle_client start awaiting")
-            if type == "text":
-                data = await reader.read(100)
-                message = data.decode()
-                print(f"handle_client receive text is{message}")
-                await self.write_data_txt(data)
-            elif type == "video":
-                data = await reader.read(100000)
-                message = data.decode()
-                # print(f"handle_client receive video is{message}")
-                await self.write_data_video(data)
-            elif type == "audio":
-                data = await reader.read(10300)
-                print(f"handle_client receive video is{data}")
-                await self.write_data_audio(data)
-            # TODO: add audio here
-            # if message.startswith('camera:'):
-            #     # 启动视频流处理
-            #     loop = asyncio.get_event_loop()
-            #     loop.create_task(self.handle_data(reader, writer, 'camera'))
-            # elif message.startswith('audio:'):
-            #     # 启动音频流处理
-            #     loop = asyncio.get_event_loop()
-            #     loop.create_task(self.handle_data(reader, writer, 'audio'))
-            # elif message.startswith('screen:'):
-            #     # 启动视频流处理
-            #     loop = asyncio.get_event_loop()
-            #     loop.create_task(self.handle_data(reader, writer, 'screen'))
-            # elif message.startswith('quit'):
-            #     del self.reader_list[client_id]
-            #     del self.writer_list[client_id]
-            #     break
-            # print(f"Received message from {client_id}: {message}")
-        pass
+        try:
+            while self.running:
+                # print("handle_client start awaiting")
+                if type == "text":
+                    data = await reader.read(100)
+                    message = data.decode()
+                    print(f"handle_client receive text is{message}")
+                    await self.write_data_txt(data)
+                elif type == "video":
+                    data = await reader.read(100000)
+                    message = data.decode()
+                    # print(f"handle_client receive video is{message}")
+                    await self.write_data_video(data)
+                elif type == "audio":
+                    data = await reader.read(10300)
+                    print(f"handle_client receive video is{data}")
+                    await self.write_data_audio(data)
+        except ConnectionResetError as e:
+            print(f"Connection lost with client: {e}")
+            writer.close()
+            await writer.wait_closed()
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
+    pass
 
     async def log(self):
         while self.running:
@@ -154,6 +144,5 @@ class ConferenceServer:
         server = await asyncio.start_server(
             self.handle_client, config.SERVER_IP, self.conf_serve_ports
         )
-        print("pass")
         print("pass")
         await server.serve_forever()

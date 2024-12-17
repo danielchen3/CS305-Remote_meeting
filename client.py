@@ -1,10 +1,11 @@
 # from util import *
+import threading
 import config
 import asyncio
 import multiprocessing
 import json
 import time
-from ui import start_ui
+from ui import start_ui, close
 
 
 class ConferenceClient:
@@ -140,7 +141,7 @@ class ConferenceClient:
             await self.keep_share(writer, type)
         print("Quit run")
 
-    async def start_conference(self, port):
+    def start_conference(self, port):
         """
         init conns when create or join a conference with necessary conference_info
         and
@@ -186,15 +187,21 @@ class ConferenceClient:
                 .lower()
             )
             fields = cmd_input.split(maxsplit=1)
+            conference_thread = None
             if len(fields) == 1:
                 if cmd_input in ("?", "？"):
                     print(config.HELP)
                 elif cmd_input == "create":
                     ID = await self.create_conference()
                     PORT = await self.join_conference(ID)
-                    await self.start_conference(PORT)
-                    await self.quit_conference()
+                    conference_thread = threading.Thread(target=self.start_conference, args=(PORT,))
+
+                    # 启动线程
+                    conference_thread.start()
+                    print(1)
+                    # await self.quit_conference()
                 elif cmd_input == "quit":
+                    close()
                     await self.quit_conference()
                     self.close_conference()
                 elif cmd_input == "cancel":

@@ -11,22 +11,17 @@ from scipy.fftpack import fft, ifft
 from collections import defaultdict
 
 # 全局变量
-audio_thread = None
+windows = None
 audio_active = False
 
 
-def toggle_audioTransmission(thread):
-    global audio_thread, audio_active
+def toggle_audioTransmission():
+    global audio_active
     if not audio_active:
         # 启动音频传输线程
-        thread.start()
         audio_active = True
     else:
-        # 停止音频传输线程
-        # 这里需要实现一个机制来安全地停止线程，例如使用事件
         audio_active = False
-        # 假设start_async_task_audio函数中有一个事件来控制线程的停止
-        # audio_thread.stop()  # 这只是一个示例，具体实现取决于start_async_task_audio函数的设计
 
 
 # 处理回车键输入的函数
@@ -227,6 +222,9 @@ async def audio_send_receive(id, ip, port):
         # 捕获音频数据
 
         while True:
+            if not audio_active:
+                await asyncio.sleep(0.001)
+                continue
             cap_audio = stream.read(CHUNK)
 
             cap_audio_base64 = base64.b64encode(cap_audio).decode("utf-8")
@@ -244,6 +242,9 @@ async def audio_send_receive(id, ip, port):
         audio = pyaudio.PyAudio()
         stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)
         while True:
+            if not audio_active:
+                await asyncio.sleep(0.001)
+                continue
             data = await reader.read(10300)
             if not data:
                 print("Server closed the connection.")
@@ -345,34 +346,47 @@ async def text_send_receive(id, ip, port, chat_box):
 def start_async_task_text(id, ip, port, chat_box):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
-    loop.run_until_complete(text_send_receive(id, ip, port, chat_box))  # 运行异步函数
+    try:
+        loop.run_until_complete(text_send_receive(id, ip, port, chat_box))
+    except Exception as e:
+        print(f"Conn close in video task: {e}")
+    finally:
+        loop.close()
 
 
 def start_async_task_video(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
-    loop.run_until_complete(video_send_receive(id, ip, port))  # 运行异步函数
+    try:
+        loop.run_until_complete(video_send_receive(id, ip, port))
+    except Exception as e:
+        print(f"Conn close in video task: {e}")
+    finally:
+        loop.close()
 
 
 def start_async_task_audio(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
-    loop.run_until_complete(audio_send_receive(id, ip, port))  # 运行异步函数
-
-
-# cnt = 0
+    try:
+        loop.run_until_complete(audio_send_receive(id, ip, port))
+    except Exception as e:
+        print(f"Conn close in video task: {e}")
+    finally:
+        loop.close()
 
 
 def start_ui(id, ip, port):
+    global windows
     # 初始化 pygame 的音频模块（确保只初始化一次）
     # pygame.mixer.init()
     # 创建主窗口
     global text
     text = None
     window = tk.Tk()
+    windows = window
     window.title("Video Conference")
     window.geometry("1500x1000")  # 设置窗口大小
-
     # 创建主界面框架，使用grid布局
     frame = tk.Frame(window)
     frame.pack(expand=True, fill=tk.BOTH)
@@ -442,15 +456,18 @@ def start_ui(id, ip, port):
         target=start_async_task_audio, args=(id, ip, port)
     )
     # 在start_ui函数中添加以下代码
-
+    send_audio_thread.start()
     # 音频控制按钮
-    audio_button = tk.Button(frame, text="Toggle Audio", command=lambda: toggle_audioTransmission(send_audio_thread))
+    audio_button = tk.Button(frame, text="Toggle Audio", command=lambda: toggle_audioTransmission())
     audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
-
 
     entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box))
     # 启动 Tkinter 主循环
     window.mainloop()
+
+
+def close():
+    windows.quit()
 
 
 if __name__ == "__main__":
