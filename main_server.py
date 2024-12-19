@@ -124,7 +124,7 @@ class MainServer:
         quit conference (in-meeting request & or no need to request)
         """
         # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
-        conference_id = self.client_connections[user_id]
+        conference_id = self.client_connections[user_id][0]
 
         if self.conference_creators.get(conference_id) != user_id:
             self.conference_servers[conference_id].quit_client(
