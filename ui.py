@@ -110,7 +110,7 @@ async def video_send_receive(id, ip, port):
             # 如果说关闭了摄像头
             if not video_active:
 
-                # message = {"OFF": id}
+                message = {"OFF": id}
                 writer.write(json.dumps(message).encode())
 
                 await asyncio.sleep(0.001)
