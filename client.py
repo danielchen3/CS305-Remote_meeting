@@ -198,7 +198,6 @@ class ConferenceClient:
 
                     # 启动线程
                     conference_thread.start()
-                    print(1)
                     # await self.quit_conference()
                 elif cmd_input == "quit":
                     close()
