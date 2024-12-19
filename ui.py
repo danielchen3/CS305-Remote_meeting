@@ -9,10 +9,12 @@ import base64
 import re
 from scipy.fftpack import fft, ifft
 from collections import defaultdict
+from tkinter import PhotoImage
 
 # 全局变量
 windows = None
-audio_active = False
+audio_active = True
+video_active = True
 
 
 def toggle_audioTransmission():
@@ -22,6 +24,15 @@ def toggle_audioTransmission():
         audio_active = True
     else:
         audio_active = False
+
+
+def toggle_videoTransmission():
+    global video_active
+    if not video_active:
+        # 启动视频传输线程
+        video_active = True
+    else:
+        video_active = False
 
 
 # 处理回车键输入的函数
@@ -83,6 +94,7 @@ async def video_send_receive(id, ip, port):
 
     labels = {}
     global cnt
+    global video_active
 
     # 发送包含 id 的消息
     message = {"client_id": id, "type": "video"}
@@ -94,6 +106,16 @@ async def video_send_receive(id, ip, port):
     async def capture_video():
 
         while True:
+
+            # 如果说关闭了摄像头
+            if not video_active:
+
+                # message = {"OFF": id}
+                writer.write(json.dumps(message).encode())
+
+                await asyncio.sleep(0.001)
+                continue
+
             camera_image = capture_camera()
             camera_image = camera_image.resize((200, 150), Image.LANCZOS)
             # 压缩图像
@@ -135,7 +157,7 @@ async def video_send_receive(id, ip, port):
                         id = parts[0]
 
                         # 使用 .keys() 方法获取所有的键
-                        # print("All keys in labels:", list(labels.keys())) 
+                        # print("All keys in labels:", list(labels.keys()))
                         if id in labels.keys():
                             # print(f"detect exist id: {id}")
                             # print(f"For now, we have label is {labels[id]}")
@@ -146,7 +168,7 @@ async def video_send_receive(id, ip, port):
                             )
                         else:
                             # If the label doesn't exist, create a new one
-                            print(f"detect not exist id {id}")
+                            # print(f"detect not exist id {id}")
                             # Create the first label
                             label1 = tk.Label(
                                 left_frame, relief="solid", image=tk_image
@@ -163,23 +185,17 @@ async def video_send_receive(id, ip, port):
 
                             # TODO: reschedule
 
-                            # label.pack(
-                            #     fill="x", anchor="w"
-                            # )  # Only pack if it's a new label
-                            # label.grid(row=2, column=1, sticky="w")
-                            # labels[id] = label  # Store the label in the dictionary
-                        #     label = tk.Label(left_frame, relief="solid")
-                        #     label.pack(fill=tk.X)
-                        #     labels[id] = label
-                        # label.config(image=tk_image)
-                        # label.image = (
-                        #     tk_image  # Keep a reference to avoid garbage collection
-                        # )
-
-                        # # 更新 canvas 滚动区域
-                        # global label_frame, canvas
-                        # label_frame.update_idletasks()  # 更新 Frame 高度
-                        # canvas.config(scrollregion=canvas.bbox("all"))  # 设置可滚动区域
+                    elif "OFF" in message:
+                        id = message["OFF"]
+                        # print(f"YES OFF {id}")
+                        # print(f"ID is {id}")
+                        label1 = labels.get(id)
+                        black_image = Image.new("RGB", (200, 100), "black")  # 创建黑色图像
+                        tk_black_image = ImageTk.PhotoImage(black_image) 
+                        label1.config(image=tk_black_image)
+                        label1.image = (
+                            tk_black_image  # Keep reference to avoid garbage collection
+                        )
                 except:
                     # print('error!!!!!!!!!!')
                     pass
@@ -213,11 +229,13 @@ async def audio_send_receive(id, ip, port):
     print(f"send our id for audio : {message}")
 
     async def capture_audios():
-        stream = pyaudio.PyAudio().open(format=FORMAT,
-                                        channels=CHANNELS,
-                                        rate=RATE,
-                                        input=True,
-                                        frames_per_buffer=CHUNK)
+        stream = pyaudio.PyAudio().open(
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=RATE,
+            input=True,
+            frames_per_buffer=CHUNK,
+        )
 
         # 捕获音频数据
 
@@ -254,22 +272,22 @@ async def audio_send_receive(id, ip, port):
             for message in objects:
                 # print(message)
 
-                    if "audio" in message:
-                        # compressed_data = message["video"]
-                        # received_image = decompress_image(compressed_data)
-                        temp_audio = message["audio"]
-                        bytes_audio = base64.b64decode(temp_audio)
-                        audio_data = np.frombuffer(bytes_audio, dtype=np.int16)
-                        # 应用 FFT
-                        fft_data = fft(audio_data)
-                        # 设定阈值，过滤噪声
-                        threshold = 100  # 阈值需要根据实际情况调整
-                        fft_data[np.abs(fft_data) < threshold] = 0
-                        # 应用逆 FFT
-                        denoised_data = ifft(fft_data)
-                        # 将数据转换回字节串并播放
-                        denoised_data = np.real(denoised_data).astype(np.int16)
-                        stream.write(denoised_data.tobytes())
+                if "audio" in message:
+                    # compressed_data = message["video"]
+                    # received_image = decompress_image(compressed_data)
+                    temp_audio = message["audio"]
+                    bytes_audio = base64.b64decode(temp_audio)
+                    audio_data = np.frombuffer(bytes_audio, dtype=np.int16)
+                    # 应用 FFT
+                    fft_data = fft(audio_data)
+                    # 设定阈值，过滤噪声
+                    threshold = 100  # 阈值需要根据实际情况调整
+                    fft_data[np.abs(fft_data) < threshold] = 0
+                    # 应用逆 FFT
+                    denoised_data = ifft(fft_data)
+                    # 将数据转换回字节串并播放
+                    denoised_data = np.real(denoised_data).astype(np.int16)
+                    stream.write(denoised_data.tobytes())
 
     # 创建并发任务
     send_task = asyncio.create_task(capture_audios())
@@ -458,8 +476,54 @@ def start_ui(id, ip, port):
     # 在start_ui函数中添加以下代码
     send_audio_thread.start()
     # 音频控制按钮
-    audio_button = tk.Button(frame, text="Toggle Audio", command=lambda: toggle_audioTransmission())
-    audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+    # audio_button = tk.Button(
+    #     frame, text="Toggle Audio", command=lambda: toggle_audioTransmission()
+    # )
+    # audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+    
+    # 加载图标（确保你有图标文件在路径中）
+    audio_icon = PhotoImage(file="icons/audio.png")  # 你的音频图标文件
+    video_icon = PhotoImage(file="icons/video.png")  # 你的视频图标文件
+    
+    # 创建带图标的小按钮
+    audio_button = tk.Button(
+        frame, 
+        text="Toggle Audio", 
+        image=audio_icon, 
+        compound="left",  # 图标在文字的左边
+        command=toggle_audioTransmission,
+        height=10,  # 设置按钮高度
+        width=10,  # 设置按钮宽度
+        bg="#4CAF50",  # 设置按钮背景色
+        fg="white",  # 设置字体颜色
+        relief="raised",  # 按钮边框样式
+    )
+
+    video_button = tk.Button(
+        frame, 
+        text="Toggle Video", 
+        image=video_icon, 
+        compound="left",  # 图标在文字的左边
+        command=toggle_videoTransmission,
+        height=10,  # 设置按钮高度
+        width=10,  # 设置按钮宽度
+        bg="#007BFF",  # 设置按钮背景色
+        fg="white",  # 设置字体颜色
+        relief="raised",  # 按钮边框样式
+    )
+
+    # 使用 grid 布局放置按钮
+    audio_button.grid(row=3, column=0, padx=2, pady=10, sticky="nsew")
+    video_button.grid(row=4, column=0, padx=2, pady=10, sticky="nsew")
+
+    # 调整列的权重，使按钮适应父容器大小
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_columnconfigure(1, weight=1)
+    
+    # audio_button = tk.Button(
+    #     frame, text="Toggle Video", command=lambda: toggle_videoTransmission()
+    # )
+    # audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
     entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box))
     # 启动 Tkinter 主循环

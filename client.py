@@ -70,6 +70,7 @@ class ConferenceClient:
         message = {"type": "quit"}
         writer.write(json.dumps(message).encode())  # 异步发送数据
         await writer.drain()  # 确保数据已发送
+        print("sent quit message")
         data = await reader.read(100)
         response = json.loads(data.decode())
         print(f"receive response is {response}")
@@ -194,12 +195,12 @@ class ConferenceClient:
                 elif cmd_input == "create":
                     ID = await self.create_conference()
                     PORT = await self.join_conference(ID)
-                    conference_thread = threading.Thread(target=self.start_conference, args=(PORT,))
-
-                    # 启动线程
-                    conference_thread.start()
-                    print(1)
-                    # await self.quit_conference()
+                    self.start_conference(PORT)
+                    # conference_thread = threading.Thread(target=self.start_conference, args=(PORT,))
+                    # # 启动线程
+                    # conference_thread.start()
+                    # print("sssss")
+                    await self.quit_conference()
                 elif cmd_input == "quit":
                     close()
                     await self.quit_conference()
@@ -218,7 +219,7 @@ class ConferenceClient:
                     if input_conf_id.isdigit():
                         PORT = await self.join_conference(input_conf_id)
                         print(f"get port join is{PORT}")
-                        await self.start_conference(PORT)
+                        self.start_conference(PORT)
                         await self.quit_conference()
                     else:
                         print("[Warn]: Input conference ID must be in digital form")

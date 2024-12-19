@@ -233,10 +233,10 @@ class MainServer:
                 break
 
         # 连接断开时清理信息
-        self.client_connections.discard(writer)
+        # self.client_connections.discard(writer)
         # self.user_conferences.discard(user_id)
-        writer.close()
-        await writer.wait_closed()
+        # writer.close()
+        # await writer.wait_closed()
         print(f"User {user_id} disconnected.")
 
     def start(self):

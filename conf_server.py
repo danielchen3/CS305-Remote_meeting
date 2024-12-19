@@ -35,7 +35,7 @@ class ConferenceServer:
         await asyncio.gather(*tasks)
         # print(0)
 
-    async def write_data_video(self, data):
+    async def write_data_video(self, data, OFF_video = None):
         tasks = []  # 用于存储所有的写入任务
         # x = 0
         for writer in self.writer_list_video.values():
@@ -67,7 +67,7 @@ class ConferenceServer:
     async def handle_client(self, reader, writer):
 
         data = await reader.read(100)
-        print(f'data is {data}')
+        print(f"data is {data}")
         message = json.loads(data.decode())
         client_id = message.get("client_id")
         type = message.get("type")
@@ -103,7 +103,13 @@ class ConferenceServer:
                 elif type == "video":
                     data = await reader.read(100000)
                     message = data.decode()
-                    # print(f"handle_client receive video is{message}")
+                    # print(f"message is {message}")
+                    # if "OFF" in message:
+                    #     OFF_video.add(writer)
+                    #     print("Already turn off the video")
+                    #     await self.write_data_video(data, OFF_video)
+                    print(f"handle_client receive video is{message}")
+                    # else:
                     await self.write_data_video(data)
                 elif type == "audio":
                     data = await reader.read(10300)
