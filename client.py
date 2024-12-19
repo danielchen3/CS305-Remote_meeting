@@ -188,7 +188,6 @@ class ConferenceClient:
                 .lower()
             )
             fields = cmd_input.split(maxsplit=1)
-            conference_thread = None
             if len(fields) == 1:
                 if cmd_input in ("?", "？"):
                     print(config.HELP)
@@ -196,13 +195,8 @@ class ConferenceClient:
                     ID = await self.create_conference()
                     PORT = await self.join_conference(ID)
                     self.start_conference(PORT)
-                    # conference_thread = threading.Thread(target=self.start_conference, args=(PORT,))
-                    # # 启动线程
-                    # conference_thread.start()
-                    # print("sssss")
                     await self.quit_conference()
                 elif cmd_input == "quit":
-                    close()
                     await self.quit_conference()
                     self.close_conference()
                 elif cmd_input == "cancel":
