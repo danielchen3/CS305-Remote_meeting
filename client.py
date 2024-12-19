@@ -187,20 +187,15 @@ class ConferenceClient:
                 .lower()
             )
             fields = cmd_input.split(maxsplit=1)
-            conference_thread = None
             if len(fields) == 1:
                 if cmd_input in ("?", "？"):
                     print(config.HELP)
                 elif cmd_input == "create":
                     ID = await self.create_conference()
                     PORT = await self.join_conference(ID)
-                    conference_thread = threading.Thread(target=self.start_conference, args=(PORT,))
-
-                    # 启动线程
-                    conference_thread.start()
-                    # await self.quit_conference()
+                    self.start_conference(PORT)
+                    await self.quit_conference()
                 elif cmd_input == "quit":
-                    close()
                     await self.quit_conference()
                     self.close_conference()
                 elif cmd_input == "cancel":
@@ -217,7 +212,7 @@ class ConferenceClient:
                     if input_conf_id.isdigit():
                         PORT = await self.join_conference(input_conf_id)
                         print(f"get port join is{PORT}")
-                        await self.start_conference(PORT)
+                        self.start_conference(PORT)
                         await self.quit_conference()
                     else:
                         print("[Warn]: Input conference ID must be in digital form")
