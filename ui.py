@@ -223,35 +223,18 @@ async def audio_send_receive(id, ip, port):
         global cnt
         audio = pyaudio.PyAudio()
         stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)
-        while True:
-            if not audio_active:
-                await asyncio.sleep(0.001)
-                continue
-            data = await reader.read(10300)
-            if not data:
-                print("Server closed the connection.")
-                break
-            objects = parse_multiple_json_objects(data)
-            # print(objects)
-            for message in objects:
-                # print(message)
-
-                if "audio" in message:
-                    # compressed_data = message["video"]
-                    # received_image = decompress_image(compressed_data)
-                    temp_audio = message["audio"]
-                    bytes_audio = base64.b64decode(temp_audio)
-                    audio_data = np.frombuffer(bytes_audio, dtype=np.int16)
-                    # 应用 FFT
-                    fft_data = fft(audio_data)
-                    # 设定阈值，过滤噪声
-                    threshold = 100  # 阈值需要根据实际情况调整
-                    fft_data[np.abs(fft_data) < threshold] = 0
-                    # 应用逆 FFT
-                    denoised_data = ifft(fft_data)
-                    # 将数据转换回字节串并播放
-                    denoised_data = np.real(denoised_data).astype(np.int16)
-                    stream.write(denoised_data.tobytes())
+        try:
+            while True:
+                if not audio_active:
+                    await asyncio.sleep(0.001)
+                    continue
+                data = await reader.read(10300)
+                if not data:
+                    print("Server no data.")
+                    continue
+                stream.write(data)
+        except ConnectionAbortedError as e:
+            print(f"Connection aborted: {e}")
 
     # 创建并发任务
     send_task = asyncio.create_task(capture_audios())
@@ -430,16 +413,16 @@ def start_ui(id, ip, port):
     )
     send_video_thread.start()
     
-    # send_audio_thread = threading.Thread(
-    #     target=start_async_task_audio, args=(id, ip, port)
-    # )
-    # send_audio_thread.start()
+    send_audio_thread = threading.Thread(
+        target=start_async_task_audio, args=(id, ip, port)
+    )
+    send_audio_thread.start()
 
     # 音频控制按钮
-    # audio_button = tk.Button(
-    #     frame, text="Toggle Audio", command=lambda: toggle_audioTransmission()
-    # )
-    # audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+    audio_button = tk.Button(
+        frame, text="Toggle Audio", command=lambda: toggle_audioTransmission()
+    )
+    audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
     # 加载图标（确保你有图标文件在路径中）
     audio_icon = PhotoImage(file="icons/audio.png")  # 你的音频图标文件
