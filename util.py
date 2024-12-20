@@ -113,7 +113,14 @@ def capture_camera():
     ret, frame = cap.read()
     if not ret:
         raise Exception('Fail to capture frame from camera')
-    return Image.fromarray(frame)
+    # return Image.fromarray(frame)
+    
+    if ret:
+        # 将BGR转换为RGB
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # 转换为PIL Image
+        image = Image.fromarray(frame_rgb)
+        return image
 
 
 def capture_voice():
@@ -138,6 +145,10 @@ def compress_image(image, format='JPEG', quality=85):
     :param quality: int, compress quality (0-100), 85 default
     :return: bytes, compressed image data
     """
+    
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
     img_byte_arr = BytesIO()
     image.save(img_byte_arr, format=format, quality=quality)
     img_byte_arr = img_byte_arr.getvalue()
@@ -155,5 +166,8 @@ def decompress_image(image_bytes):
     compressed_bytes = base64.b64decode(image_bytes)
     img_byte_arr = BytesIO(compressed_bytes)
     image = Image.open(img_byte_arr)
+    
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
 
     return image

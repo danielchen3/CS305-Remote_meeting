@@ -35,7 +35,7 @@ class ConferenceServer:
         await asyncio.gather(*tasks)
         # print(0)
 
-    async def write_data_video(self, data, OFF_video = None):
+    async def write_data_video(self, data, OFF_video=None):
         tasks = []  # 用于存储所有的写入任务
         # x = 0
         for writer in self.writer_list_video.values():
@@ -123,12 +123,13 @@ class ConferenceServer:
     async def log(self):
         while self.running:
             print(f"Server status: {len(self.reader_list)} clients connected")
+
     def cancel_conference(self):
         print(f"conf_server start canceling server")
-        if self.conf_server:
-            await self.server.wait_closed()
-            await self.conf_server.wait_closed()
-            print("Conference server stopped")
+        # if self.conf_server:
+        #     self.conf_server.close()
+        #     self.conf_server.wait_closed()
+        #     print("Conference server stopped")
         self.running = False
         # for conn in self.writer_list_text.values():
         #     conn.close()
@@ -136,7 +137,7 @@ class ConferenceServer:
         #     conn.close()
         # for conn in self.writer_list_audio.values():
         #     conn.close()
-        await asyncio.sleep(1)  # 等待连接关闭
+        # asyncio.sleep(1)  # 等待连接关闭
         # del self.main_server.conference_servers[self.conference_id]
 
     async def start(self):

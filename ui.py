@@ -159,7 +159,7 @@ async def video_send_receive(id, ip, port):
                     elif "OFF" in message:
                         id = message["OFF"]
                         label1 = labels.get(id)
-                        black_image = Image.new("RGB", (200, 100), "black")  # 创建黑色图像
+                        black_image = Image.new("RGB", (200, 150), "black")  # 创建黑色图像
                         tk_black_image = ImageTk.PhotoImage(black_image) 
                         label1.config(image=tk_black_image)
                         label1.image = (tk_black_image)
