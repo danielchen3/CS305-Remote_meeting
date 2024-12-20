@@ -10,13 +10,13 @@ import re
 from scipy.fftpack import fft, ifft
 from collections import defaultdict
 from tkinter import PhotoImage
+from multiprocessing import Process
 
 # 全局变量
-windows = None
+window = None
 audio_active = True
 video_active = True
-P2P = False
-
+Stop = False
 
 def toggle_audioTransmission():
     global audio_active
@@ -90,87 +90,61 @@ def parse_multiple_json_objects(data):
 
 async def video_send_receive(id, ip, port):
     reader, writer = await asyncio.open_connection(ip, port)
-
     await asyncio.sleep(0.3)
-
     labels = {}
     global cnt
     global video_active
-
-    # 发送包含 id 的消息
     message = {"client_id": id, "type": "video"}
     writer.write(json.dumps(message).encode())
-    await writer.drain()  # 确保消息已发送
-
+    await writer.drain() 
     print(f"send our id for video : {message}")
-
     async def capture_video():
-
         while True:
-
-            # 如果说关闭了摄像头
+            if Stop == True:
+                print('stop capture')
+                break
+            print('in capture')
             if not video_active:
-
                 message = {"OFF": id}
                 writer.write(json.dumps(message).encode())
-
                 await asyncio.sleep(0.001)
                 continue
-
             camera_image = capture_camera()
             camera_image = camera_image.resize((200, 150), Image.LANCZOS)
-            # 压缩图像
             compressed_image = compress_image(camera_image)
-
             compressed_image_base64 = base64.b64encode(compressed_image).decode("utf-8")
-
             message = {"video": f"{id}:{compressed_image_base64}"}
             writer.write(json.dumps(message).encode())
             await writer.drain()
-
-            # 控制视频发送的频率
             await asyncio.sleep(0.1)
 
     async def display_video():
         global cnt
         while True:
+            if Stop == True:
+                print('stop display')
+                break
+            print('in display')
             data = await reader.read(100000)
             if not data:
                 print("Server closed the connection.")
                 break
             objects = parse_multiple_json_objects(data)
-            # print(objects)
             for message in objects:
-                # print(message)
                 try:
                     if "video" in message:
-                        # compressed_data = message["video"]
-                        # received_image = decompress_image(compressed_data)
-
                         temp_video = message["video"]
-                        # 按照id:image的格式把他们分开
                         parts = temp_video.split(":", 1)
                         received_image = decompress_image(parts[1])
-                        # print(f"part0 is {parts[0]}")
-                        # print(f"part1 is {parts[1]}")
-
                         tk_image = ImageTk.PhotoImage(received_image)
                         id = parts[0]
-
-                        # 使用 .keys() 方法获取所有的键
-                        # print("All keys in labels:", list(labels.keys()))
                         if id in labels.keys():
-                            # print(f"detect exist id: {id}")
-                            # print(f"For now, we have label is {labels[id]}")
                             label1 = labels.get(id)
                             label1.config(image=tk_image)
                             label1.image = (
                                 tk_image  # Keep reference to avoid garbage collection
                             )
                         else:
-                            # If the label doesn't exist, create a new one
-                            # print(f"detect not exist id {id}")
-                            # Create the first label
                             label1 = tk.Label(
                                 left_frame, relief="solid", image=tk_image
                             )
@@ -179,34 +153,20 @@ async def video_send_receive(id, ip, port):
                             )
                             label1.grid(
                                 row=0, column=cnt, padx=10, pady=10
-                            )  # Place in grid at (row=0, column=0)
+                            )
                             cnt += 1
-
                             labels[id] = label1
-
-                            # TODO: reschedule
-
                     elif "OFF" in message:
                         id = message["OFF"]
-                        # print(f"YES OFF {id}")
-                        # print(f"ID is {id}")
                         label1 = labels.get(id)
-                        black_image = Image.new(
-                            "RGB", (200, 100), "black"
-                        )  # 创建黑色图像
-                        tk_black_image = ImageTk.PhotoImage(black_image)
+                        black_image = Image.new("RGB", (200, 100), "black")  # 创建黑色图像
+                        tk_black_image = ImageTk.PhotoImage(black_image) 
                         label1.config(image=tk_black_image)
-                        label1.image = (
-                            tk_black_image  # Keep reference to avoid garbage collection
-                        )
+                        label1.image = (tk_black_image)
                 except:
-                    # print('error!!!!!!!!!!')
                     pass
-
-    # 创建并发任务
     send_task = asyncio.create_task(capture_video())
     receive_task = asyncio.create_task(display_video())
-
     try:
         await asyncio.gather(send_task, receive_task)
     except asyncio.CancelledError:
@@ -398,14 +358,13 @@ def start_async_task_audio(id, ip, port):
 
 
 def start_ui(id, ip, port):
-    global windows
+    global window
     # 初始化 pygame 的音频模块（确保只初始化一次）
     # pygame.mixer.init()
     # 创建主窗口
     global text
     text = None
     window = tk.Tk()
-    windows = window
     window.title("Video Conference")
     window.geometry("1500x1000")  # 设置窗口大小
     # 创建主界面框架，使用grid布局
@@ -455,29 +414,26 @@ def start_ui(id, ip, port):
     )
     text_widget.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
     scrollbar.config(command=text_widget.yview)
-    # 用于显示输入文本的标签
-    # chat_box = tk.Text(right_frame, height=10, width=50, state=tk.DISABLED)
-    # chat_box.pack()
-    # 绑定回车键事件
-    sendtext_thread = threading.Thread(
-        target=start_async_task_text, args=(id, ip, port, text_widget)
-    )
-    sendtext_thread.start()
+    
+    # global send_video
+    # send_video = Process(target=start_async_task_video, args=(id, ip, port))
+    # send_video.start()
 
-    # thread = threading.Thread(target=start_async_task2, args = (id, ip, port, chat_box))
-    # thread.start()
-
-    # 启动视频流发送和接收的异步任务
+    # sendtext_thread = threading.Thread(
+    #     target=start_async_task_text, args=(id, ip, port, text_widget)
+    # )
+    # sendtext_thread.start()
+    global send_video_thread
     send_video_thread = threading.Thread(
         target=start_async_task_video, args=(id, ip, port)
     )
     send_video_thread.start()
+    
+    # send_audio_thread = threading.Thread(
+    #     target=start_async_task_audio, args=(id, ip, port)
+    # )
+    # send_audio_thread.start()
 
-    send_audio_thread = threading.Thread(
-        target=start_async_task_audio, args=(id, ip, port)
-    )
-    # 在start_ui函数中添加以下代码
-    send_audio_thread.start()
     # 音频控制按钮
     # audio_button = tk.Button(
     #     frame, text="Toggle Audio", command=lambda: toggle_audioTransmission()
@@ -530,11 +486,19 @@ def start_ui(id, ip, port):
 
     entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box))
     # 启动 Tkinter 主循环
+    window.protocol("WM_DELETE_WINDOW", close_window)
     window.mainloop()
 
 
-def close():
-    windows.quit()
+def close_window():
+    global window, Stop
+    Stop = True
+    # global send_video
+    # if send_video is not None:
+    #     send_video.terminate()
+    #     send_video.join()     
+    window.quit()
+    window.destroy()
 
 
 if __name__ == "__main__":

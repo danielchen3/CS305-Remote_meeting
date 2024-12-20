@@ -117,18 +117,13 @@ class ConferenceServer:
                     await self.write_data_audio(data)
         except ConnectionResetError as e:
             print(f"Connection lost with client: {e}")
-            writer.close()
-            await writer.wait_closed()
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-
-    pass
 
     async def log(self):
         while self.running:
             print(f"Server status: {len(self.reader_list)} clients connected")
-
-    async def cancel_conference(self):
+    def cancel_conference(self):
         print(f"conf_server start canceling server")
         if self.conf_server:
             await self.server.wait_closed()
