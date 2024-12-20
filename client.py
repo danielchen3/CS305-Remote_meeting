@@ -221,6 +221,12 @@ class ConferenceClient:
                     data_type = fields[1]
                     if data_type in self.share_data.keys():
                         self.share_switch(data_type)
+                # p2p mode
+                elif fields[0] == "create":
+                    if fields[1] == "p2p":
+                        pass
+                    else:
+                        recognized = False
                 else:
                     recognized = False
             else:

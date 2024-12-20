@@ -129,13 +129,18 @@ class ConferenceServer:
             print(f"Server status: {len(self.reader_list)} clients connected")
 
     async def cancel_conference(self):
+        print(f"conf_server start canceling server")
+        if self.conf_server:
+            await self.server.wait_closed()
+            await self.conf_server.wait_closed()
+            print("Conference server stopped")
         self.running = False
-        for conn in self.writer_list_text.values():
-            conn.close()
-        for conn in self.writer_list_video.values():
-            conn.close()
-        for conn in self.writer_list_audio.values():
-            conn.close()
+        # for conn in self.writer_list_text.values():
+        #     conn.close()
+        # for conn in self.writer_list_video.values():
+        #     conn.close()
+        # for conn in self.writer_list_audio.values():
+        #     conn.close()
         await asyncio.sleep(1)  # 等待连接关闭
         # del self.main_server.conference_servers[self.conference_id]
 
@@ -147,8 +152,8 @@ class ConferenceServer:
         loop.create_task(self.accept_clients())
 
     async def accept_clients(self):
-        server = await asyncio.start_server(
+        self.conf_server = await asyncio.start_server(
             self.handle_client, config.SERVER_IP, self.conf_serve_ports
         )
         print("pass")
-        await server.serve_forever()
+        await self.conf_server.serve_forever()

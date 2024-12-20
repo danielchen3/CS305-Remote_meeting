@@ -15,6 +15,7 @@ from tkinter import PhotoImage
 windows = None
 audio_active = True
 video_active = True
+P2P = False
 
 
 def toggle_audioTransmission():
@@ -190,8 +191,10 @@ async def video_send_receive(id, ip, port):
                         # print(f"YES OFF {id}")
                         # print(f"ID is {id}")
                         label1 = labels.get(id)
-                        black_image = Image.new("RGB", (200, 100), "black")  # 创建黑色图像
-                        tk_black_image = ImageTk.PhotoImage(black_image) 
+                        black_image = Image.new(
+                            "RGB", (200, 100), "black"
+                        )  # 创建黑色图像
+                        tk_black_image = ImageTk.PhotoImage(black_image)
                         label1.config(image=tk_black_image)
                         label1.image = (
                             tk_black_image  # Keep reference to avoid garbage collection
@@ -480,16 +483,16 @@ def start_ui(id, ip, port):
     #     frame, text="Toggle Audio", command=lambda: toggle_audioTransmission()
     # )
     # audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
-    
+
     # 加载图标（确保你有图标文件在路径中）
     audio_icon = PhotoImage(file="icons/audio.png")  # 你的音频图标文件
     video_icon = PhotoImage(file="icons/video.png")  # 你的视频图标文件
-    
+
     # 创建带图标的小按钮
     audio_button = tk.Button(
-        frame, 
-        text="Toggle Audio", 
-        image=audio_icon, 
+        frame,
+        text="Toggle Audio",
+        image=audio_icon,
         compound="left",  # 图标在文字的左边
         command=toggle_audioTransmission,
         height=10,  # 设置按钮高度
@@ -500,9 +503,9 @@ def start_ui(id, ip, port):
     )
 
     video_button = tk.Button(
-        frame, 
-        text="Toggle Video", 
-        image=video_icon, 
+        frame,
+        text="Toggle Video",
+        image=video_icon,
         compound="left",  # 图标在文字的左边
         command=toggle_videoTransmission,
         height=10,  # 设置按钮高度
@@ -519,7 +522,7 @@ def start_ui(id, ip, port):
     # 调整列的权重，使按钮适应父容器大小
     frame.grid_columnconfigure(0, weight=1)
     frame.grid_columnconfigure(1, weight=1)
-    
+
     # audio_button = tk.Button(
     #     frame, text="Toggle Video", command=lambda: toggle_videoTransmission()
     # )

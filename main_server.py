@@ -124,7 +124,7 @@ class MainServer:
         quit conference (in-meeting request & or no need to request)
         """
         # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
-        conference_id = self.client_connections[user_id][0]
+        conference_id = self.client_connections.get(user_id)
 
         if self.conference_creators.get(conference_id) != user_id:
             self.conference_servers[conference_id].quit_client(
@@ -144,7 +144,7 @@ class MainServer:
         cancel conference (in-meeting request, a ConferenceServer should be closed by the MainServer)
         """
 
-        conference_id = self.client_connections[user_id]
+        conference_id = self.client_connections.get(user_id)
 
         if conference_id not in self.conference_servers:
             return {"status": False, "error": "Conference not found"}
