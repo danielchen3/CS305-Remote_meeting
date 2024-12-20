@@ -164,6 +164,7 @@ async def video_send_receive(id, ip, port):
                         label1.config(image=tk_black_image)
                         label1.image = (tk_black_image)
                 except:
+                    print('error')
                     pass
     send_task = asyncio.create_task(capture_video())
     receive_task = asyncio.create_task(display_video())
@@ -497,6 +498,7 @@ def close_window():
     # if send_video is not None:
     #     send_video.terminate()
     #     send_video.join()     
+    time.sleep(100)
     window.quit()
     window.destroy()
 

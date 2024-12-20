@@ -101,7 +101,10 @@ class ConferenceServer:
                     print(f"handle_client receive text is{message}")
                     await self.write_data_txt(data)
                 elif type == "video":
+                    print('11111')
+                    print(reader)
                     data = await reader.read(100000)
+                    print('22222')
                     message = data.decode()
                     # print(f"message is {message}")
                     # if "OFF" in message:
