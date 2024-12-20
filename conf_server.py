@@ -102,14 +102,13 @@ class ConferenceServer:
                 # print("handle_client start awaiting")
                 if type == "text":
                     data = await reader.read(100)
+                    if not data:
+                        continue
                     message = data.decode()
                     print(f"handle_client receive text is{message}")
                     await self.write_data_txt(data)
                 elif type == "video":
-                    print('11111')
-                    print(reader)
                     data = await reader.read(100000)
-                    print('22222')
                     message = data.decode()
                     # print(f"message is {message}")
                     # if "OFF" in message:
@@ -152,7 +151,7 @@ class ConferenceServer:
         loop = asyncio.get_event_loop()
         # loop.create_task(self.log())
         loop.create_task(self.accept_clients())
-        loop.create_task(self.handle_audio())
+        # loop.create_task(self.handle_audio())
 
     async def accept_clients(self):
         server = await asyncio.start_server(
