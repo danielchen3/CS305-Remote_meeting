@@ -1,6 +1,11 @@
 import asyncio
+import base64
 import json
+
+import numpy as np
+
 import config
+from ui import parse_multiple_json_objects
 
 
 async def _write_data(writer, data):
@@ -112,9 +117,7 @@ class ConferenceServer:
                     # else:
                     await self.write_data_video(data)
                 elif type == "audio":
-                    data = await reader.read(10300)
-                    print(f"handle_client receive video is{data}")
-                    await self.write_data_audio(data)
+                    await asyncio.sleep(1)
         except ConnectionResetError as e:
             print(f"Connection lost with client: {e}")
         except Exception as e:
@@ -146,10 +149,61 @@ class ConferenceServer:
         loop = asyncio.get_event_loop()
         # loop.create_task(self.log())
         loop.create_task(self.accept_clients())
+        loop.create_task(self.handle_audio())
 
     async def accept_clients(self):
-        self.conf_server = await asyncio.start_server(
+        server = await asyncio.start_server(
             self.handle_client, config.SERVER_IP, self.conf_serve_ports
         )
         print("pass")
-        await self.conf_server.serve_forever()
+        await server.serve_forever()
+
+    async def handle_audio(self):
+        await asyncio.sleep(5)
+        while self.running:
+            print("begin handle")
+            all_data = []
+            for client_id, reader in list(self.reader_list_audio.items()):
+                if not client_id in self.reader_list_audio:  # or not self.on_audio[client_id]:
+                    continue
+                print(client_id)
+                data = await reader.read(10300)
+                print(data)
+                objects = parse_multiple_json_objects(data)
+                for message in objects:
+                    if "audio" in message:
+                        temp_audio = message["audio"]
+                        bytes_audio = base64.b64decode(temp_audio)
+                        print(bytes_audio)
+                        print(len(bytes_audio))
+                        all_data.append(bytes_audio)
+
+            if len(all_data) == 0:
+                continue
+            over_data = self.overlay_audio(*all_data)
+            await self.write_data_audio(over_data)
+
+    def overlay_audio(*audio_data):
+        print(audio_data)
+        audio_arrays = []
+        # 将音频数据转换为 numpy 数组（假设音频格式是 int16）
+        for data in audio_data:
+            if isinstance(data, bytes):
+                audio_arrays.append(np.frombuffer(data, dtype=np.int16))
+            else:
+                continue
+        # 获取最大音频长度
+        max_length = max(len(arr) for arr in audio_arrays)
+
+        # 补齐音频数组
+        for i in range(len(audio_arrays)):
+            if len(audio_arrays[i]) < max_length:
+                audio_arrays[i] = np.pad(audio_arrays[i], (0, max_length - len(audio_arrays[i])), 'constant')
+
+        # 将音频数组按帧逐个叠加
+        combined_audio = np.zeros(max_length, dtype=np.int16)
+        for arr in audio_arrays:
+            combined_audio += arr
+
+        # 将叠加后的音频数据转换为字节
+        return combined_audio.tobytes()
