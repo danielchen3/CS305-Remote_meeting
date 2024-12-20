@@ -124,12 +124,10 @@ class MainServer:
         quit conference (in-meeting request & or no need to request)
         """
         # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
-        conference_id = self.client_connections[user_id][0]
-
+        print(user_id)
+        conference_id = self.client_connections.get(user_id)
+        print(f'conferenceid is {conference_id}')
         if self.conference_creators.get(conference_id) != user_id:
-            self.conference_servers[conference_id].quit_client(
-                self.reader_connect[user_id], self.writer_connect[user_id]
-            )
             return {
                 "status": True,
                 "message": f"User {user_id} has left conference {conference_id}.",
@@ -144,8 +142,9 @@ class MainServer:
         cancel conference (in-meeting request, a ConferenceServer should be closed by the MainServer)
         """
 
-        conference_id = self.client_connections[user_id]
+        conference_id = self.client_connections.get(user_id)
 
+        print(f'conferenceid1 is {conference_id}')
         if conference_id not in self.conference_servers:
             return {"status": False, "error": "Conference not found"}
 
@@ -155,7 +154,7 @@ class MainServer:
         # 取消的话，就把会议从会议列表中移除
         conf_server = self.conference_servers.pop(conference_id)
         # 调用conf_server的取消会议函数
-        asyncio.create_task(conf_server.cancel_conference())
+        conf_server.cancel_conference()
         del self.conference_creators[conference_id]
 
         # 把会议编号从每个参会者参会列表中移除
@@ -229,7 +228,7 @@ class MainServer:
                 await writer.drain()
                 print("finish writing")
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Main_server Error: {e}")
                 break
 
         # 连接断开时清理信息

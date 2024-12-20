@@ -5,7 +5,7 @@ import asyncio
 import multiprocessing
 import json
 import time
-from ui import start_ui, close
+from ui import start_ui
 
 
 class ConferenceClient:
@@ -196,6 +196,7 @@ class ConferenceClient:
                     PORT = await self.join_conference(ID)
                     self.start_conference(PORT)
                     await self.quit_conference()
+                    self.close_conference()
                 elif cmd_input == "quit":
                     await self.quit_conference()
                     self.close_conference()
