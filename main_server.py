@@ -37,6 +37,7 @@ class MainServer:
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
         self.conference_port = {}  # conference_id -> PORT
+        self.cnt = 0
 
     async def authenticate_user(self, reader, writer):
         """
@@ -84,7 +85,8 @@ class MainServer:
         create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
         """
         print("Start create conf...")
-        conference_id = len(self.conference_servers) + 1
+        self.cnt += 1
+        conference_id = self.cnt
         free_port = get_free_port()
         conf_server = ConferenceServer(free_port)
         print(f"user_id:{user_id} create conference:{conference_id}Port:{free_port}")
@@ -126,7 +128,6 @@ class MainServer:
         # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
         print(user_id)
         conference_id = self.client_connections.get(user_id)
-        print(f'conferenceid is {conference_id}')
         if self.conference_creators.get(conference_id) != user_id:
             return {
                 "status": True,
@@ -143,8 +144,6 @@ class MainServer:
         """
 
         conference_id = self.client_connections.get(user_id)
-
-        print(f'conferenceid1 is {conference_id}')
         if conference_id not in self.conference_servers:
             return {"status": False, "error": "Conference not found"}
 

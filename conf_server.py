@@ -105,16 +105,23 @@ class ConferenceServer:
                     if not data:
                         continue
                     message = data.decode()
+                    if "quit" in message:
+                        id = message['quit']
+                        await self.write_data_video(data)
+                        del self.reader_list_video[id]
+                        del self.writer_list_video[id]
+                        break                    
                     print(f"handle_client receive text is{message}")
                     await self.write_data_txt(data)
                 elif type == "video":
                     data = await reader.read(100000)
                     message = data.decode()
-                    # print(f"message is {message}")
-                    # if "OFF" in message:
-                    #     OFF_video.add(writer)
-                    #     print("Already turn off the video")
-                    #     await self.write_data_video(data, OFF_video)
+                    if "quit" in message:
+                        id = message['quit']
+                        await self.write_data_video(data)
+                        del self.reader_list_video[id]
+                        del self.writer_list_video[id]
+                        break
                     print(f"handle_client receive video is{message}")
                     # else:
                     await self.write_data_video(data)
@@ -124,7 +131,7 @@ class ConferenceServer:
             print(f"Connection lost with client: {e}")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-
+        print('conference end!')
     async def log(self):
         while self.running:
             print(f"Server status: {len(self.reader_list)} clients connected")
