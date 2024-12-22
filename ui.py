@@ -274,11 +274,11 @@ def start_async_task_text(id, ip, port, q, text_q, Stop):
         loop.close()
 
 
-def start_async_task_video(id, ip, port, q, video_active):
+def start_async_task_video(id, ip, port, q, video_active, Stop):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
     try:
-        loop.run_until_complete(video_send_receive(id, ip, port, q, video_active))
+        loop.run_until_complete(video_send_receive(id, ip, port, q, video_active, Stop))
     except Exception as e:
         print(f"Conn close in video task: {e}")
     finally:
@@ -396,8 +396,8 @@ def start_ui(id, ip, port):
     text_q = Queue()
     update(window, text_widget, left_frame, q)
     global send_text, video
-    send_text = Process(target=start_async_task_text, args=(id, ip, port, q, text_q, Stop))
-    send_text.start()
+    #send_text = Process(target=start_async_task_text, args=(id, ip, port, q, text_q, Stop))
+    #send_text.start()
     video = Process(target=start_async_task_video, args=(id, ip, port, q, video_active, Stop))
     video.start()
 
@@ -460,13 +460,13 @@ def start_ui(id, ip, port):
     frame.grid_columnconfigure(1, weight=1)
 
     entry_box.bind("<Return>", lambda event: on_enter_pressed(entry_box, text_q))
-    window.protocol("WM_DELETE_WINDOW", close_window)
+    window.protocol("WM_DELETE_WINDOW", lambda event:close_window(Stop))
     window.mainloop()
 
 
 def close_window(Stop):
     global window, task_id
-    Stop.value = True
+    #Stop.value = True
     global send_text
     time.sleep(2)
     send_text.terminate()
