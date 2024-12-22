@@ -5,7 +5,7 @@ import asyncio
 import multiprocessing
 import json
 import time
-from ui import start_ui
+from ui import APP
 
 
 class ConferenceClient:
@@ -148,7 +148,8 @@ class ConferenceClient:
         and
         start necessary running task for conference
         """
-        start_ui(self.id, config.SERVER_IP, port)
+        app = APP()
+        app.start(self.id, config.SERVER_IP, port)
 
     def close_conference(self):
         """
@@ -200,6 +201,9 @@ class ConferenceClient:
                 elif cmd_input == "quit":
                     await self.quit_conference()
                     self.close_conference()
+                    # message = {"hello!!!!"}
+                    # writer.write(json.dumps(message).encode())  # 异步发送数据
+                    # await writer.drain()  # 确保数据已发送
                 elif cmd_input == "cancel":
                     await self.cancel_conference()
                 elif cmd_input == "view":
@@ -235,7 +239,6 @@ class ConferenceClient:
 
             if not recognized:
                 print(f"[Warn]: Unrecognized cmd_input {cmd_input}")
-        writer.close()
         print("Client closed")
 
 

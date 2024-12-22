@@ -144,8 +144,6 @@ class MainServer:
         """
 
         conference_id = self.client_connections.get(user_id)
-
-        print(f'conferenceid1 is {conference_id}')
         if conference_id not in self.conference_servers:
             return {"status": False, "error": "Conference not found"}
 

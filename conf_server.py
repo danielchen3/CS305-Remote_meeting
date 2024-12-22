@@ -19,8 +19,6 @@ class ConferenceServer:
         self.data_serve_ports = {}
         self.data_types = ["screen", "camera", "audio"]
         # 不同类型中存储不同类型对应用户的reader,writer 对应关系ex. id -> text writer/reader
-        self.reader_list_text = {}
-        self.reader_list_video = {}
         self.reader_list_audio = {}
         self.writer_list = {}
         self.running = True
@@ -64,69 +62,69 @@ class ConferenceServer:
         # print(0)
 
     async def handle_client(self, reader, writer):
-
-        data = await reader.read(100)
-        print(f"data is {data}")
-        message = json.loads(data.decode())
-        client_id = message.get("client_id")
-        type = message.get("type")
-        print(f"get client: {client_id}")
-
-        if type == "text":
-            self.reader_list_text[client_id] = reader
-        elif type == "video":
-            self.reader_list_video[client_id] = reader
-        elif type == "audio":
-            self.reader_list_audio[client_id] = reader
-        elif type == "receive":
-            self.writer_list[client_id] = writer
-            return 
         while self.running:
-            data = await reader.read(100000)
+            asyncio.sleep(0.1)
+            data = await reader.read(50000)
+            if not data:
+                print('client disconnected!')
+                break
+            print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
             for message in objects:
-                tasks = []
-                print(f"{message['type']}")
-                if message['type'] == 'quit':
-                    if message['client_id'] == self.owner:
-                        self.cancel_conference()
-                    else: self.quit(message['client_id'])
+                client_id = message.get("client_id")
+                type = message.get("type")
+                if type == "receive":
+                    self.writer_list[client_id] = writer
+                    return 
+                if type == 'quit':
+                    if client_id == self.owner:
+                        await self.cancel_conference()
+                    else: 
+                        await self.quit(client_id)
+                    # tmp_message = {'type':'ack'}
+                    # writer.write(json.dumps(tmp_message).encode())
+                    # await writer.drain()
                     break
+            for message in objects:
+                tasks = []
+                print(f"receive is {message['type']}")
                 for key, writer in self.writer_list.items():
                     print(f'send to {key}')
                     tasks.append(asyncio.create_task(_write_data(writer, data)))
                 await asyncio.gather(*tasks)
-        print(f'quit from {type}')
+        print(f'quit handle')
 
     async def log(self):
         while self.running:
             print(f"Server status: {len(self.reader_list)} clients connected")
-    def quit(self, id):
-        if id in self.reader_list_audio:
-            del self.reader_list_audio[id]
-        if id in self.reader_list_text:
-            del self.reader_list_text[id]
-        if id in self.reader_list_video:
-            del self.reader_list_video[id]
+    async def quit(self, id):
         if id in self.writer_list:
+            message = {"type":"quit"}
+            writer = self.writer_list[id]
+            writer.write(json.dumps(message).encode())
+            await writer.drain()
             del self.writer_list[id]
-    def cancel_conference(self):
+    async def cancel_conference(self):
         print(f"conf_server start canceling server")
         self.running = False
+        while self.writer_list:
+            key = next(iter(self.writer_list))
+            await quit(key)
+
 
     async def start(self):
         print("start")
         print(self.conf_serve_ports)
-        loop = asyncio.get_event_loop()
+        await self.accept_clients()
+       # loop = asyncio.get_event_loop()
         # loop.create_task(self.log())
-        loop.create_task(self.accept_clients())
+        #loop.create_task(self.accept_clients())
         # loop.create_task(self.handle_audio())
 
     async def accept_clients(self):
         server = await asyncio.start_server(
             self.handle_client, config.SERVER_IP, self.conf_serve_ports
         )
-        print("pass")
         await server.serve_forever()
 
     async def handle_audio(self):

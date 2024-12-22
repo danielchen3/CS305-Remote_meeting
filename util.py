@@ -187,3 +187,8 @@ def decompress_image(image_bytes):
         image = image.convert('RGB')
 
     return image
+
+
+black_image = Image.new("RGB", (200, 150), (0, 0, 0))
+black_image = compress_image(black_image)
+black_image = base64.b64encode(black_image).decode("utf-8")
