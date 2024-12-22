@@ -2,21 +2,14 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import time
 from util import *
-import pygame
 import threading
 import socket
 import base64
-import re
 from scipy.fftpack import fft, ifft
 from collections import defaultdict
 from tkinter import PhotoImage
 from multiprocessing import Process
 
-# 全局变量
-window = None
-audio_active = True
-video_active = True
-Stop = False
 
 def toggle_audioTransmission():
     global audio_active
@@ -56,124 +49,85 @@ import asyncio
 import json
 
 cnt = 0
-
-
-# def parse_multiple_json_objects(data_str):
-#     objects = []
-#     while data_str:
-#         try:
-#             # 尝试解码一个 JSON 对象
-#             obj, idx = json.JSONDecoder().raw_decode(data_str)
-#             objects.append(obj)
-#             # 剩余的部分
-#             data_str = data_str[idx:].strip()
-#         except json.JSONDecodeError as e:
-#             print("Error decoding JSON:", e)
-#             break
-#     return objects
-
-
-def parse_multiple_json_objects(data):
-    # 使用正则表达式查找所有JSON对象
-    json_objects = re.findall(r"\{.*?\}", data.decode(), re.DOTALL)
-
-    # 解析每个JSON对象，丢弃不完整或无效的JSON对象
-    parsed_objects = []
-    for obj in json_objects:
-        try:
-            parsed_objects.append(json.loads(obj))
-        except json.JSONDecodeError:
-            # 如果解析失败，直接跳过这个对象
-            continue
-    return parsed_objects
-
-
-async def video_send_receive(id, ip, port):
+async def video_send(id, ip, port):
     reader, writer = await asyncio.open_connection(ip, port)
-    await asyncio.sleep(0.3)
-    labels = {}
-    global cnt
-    global video_active
     message = {"client_id": id, "type": "video"}
     writer.write(json.dumps(message).encode())
     await writer.drain() 
     print(f"send our id for video : {message}")
-    async def capture_video():
-        while True:
-            if Stop == True:
-                print('stop capture')
-                break
-            print('in capture')
-            if not video_active:
-                message = {"OFF": id}
-                writer.write(json.dumps(message).encode())
-                await asyncio.sleep(0.001)
-                continue
-            camera_image = capture_camera()
-            camera_image = camera_image.resize((200, 150), Image.LANCZOS)
-            compressed_image = compress_image(camera_image)
-            compressed_image_base64 = base64.b64encode(compressed_image).decode("utf-8")
-            message = {"video": f"{id}:{compressed_image_base64}"}
-            writer.write(json.dumps(message).encode())
-            await writer.drain()
-            await asyncio.sleep(0.1)
-
-    async def display_video():
-        global cnt
-        while True:
-            if Stop == True:
-                print('stop display')
-                break
-            print('in display')
-            data = await reader.read(100000)
-            if not data:
-                print("Server closed the connection.")
-                break
-            objects = parse_multiple_json_objects(data)
-            for message in objects:
-                try:
-                    if "video" in message:
-                        temp_video = message["video"]
-                        parts = temp_video.split(":", 1)
-                        received_image = decompress_image(parts[1])
-                        tk_image = ImageTk.PhotoImage(received_image)
-                        id = parts[0]
-                        if id in labels.keys():
-                            label1 = labels.get(id)
-                            label1.config(image=tk_image)
-                            label1.image = (
-                                tk_image  # Keep reference to avoid garbage collection
-                            )
-                        else:
-                            label1 = tk.Label(
-                                left_frame, relief="solid", image=tk_image
-                            )
-                            label1.image = (
-                                tk_image  # Keep reference to avoid garbage collection
-                            )
-                            label1.grid(
-                                row=0, column=cnt, padx=10, pady=10
-                            )
-                            cnt += 1
-                            labels[id] = label1
-                    elif "OFF" in message:
-                        id = message["OFF"]
-                        label1 = labels.get(id)
-                        black_image = Image.new("RGB", (200, 150), "black")  # 创建黑色图像
-                        tk_black_image = ImageTk.PhotoImage(black_image) 
-                        label1.config(image=tk_black_image)
-                        label1.image = (tk_black_image)
-                except:
-                    pass
-    send_task = asyncio.create_task(capture_video())
-    receive_task = asyncio.create_task(display_video())
-    try:
-        await asyncio.gather(send_task, receive_task)
-    except asyncio.CancelledError:
-        print("Tasks were cancelled.")
-    finally:
-        writer.close()
-        await writer.wait_closed()
+    while True:
+        if Stop:
+            message = {"type": "quit", "client_id":id}
+            break
+        time.sleep(0.03)
+        if not video_active:
+            camera_image = Image.new("RGB", (200, 150), "black")
+        camera_image = capture_camera()
+        camera_image = camera_image.resize((200, 150), Image.LANCZOS)
+        compressed_image = compress_image(camera_image)
+        compressed_image_base64 = base64.b64encode(compressed_image).decode("utf-8")
+        message = {
+            "client_id": id,
+            "type": "video", 
+            "data": compressed_image_base64
+        }
+        writer.write(json.dumps(message).encode())
+        await writer.drain()
+    # async def display_video():
+    #     global cnt
+    #     while True:
+    #         if Stop:
+    #             break
+    #         print('in display')
+    #         data = await reader.read(100000)
+    #         if not data:
+    #             print("Server closed the connection.")
+    #             break
+    #         objects = parse_multiple_json_objects(data)
+    #         for message in objects:
+    #             try:
+    #                 if "video" in message:
+    #                     temp_video = message["video"]
+    #                     parts = temp_video.split(":", 1)
+    #                     received_image = decompress_image(parts[1])
+    #                     tk_image = ImageTk.PhotoImage(received_image)
+    #                     id = parts[0]
+    #                     if id in labels.keys():
+    #                         label1 = labels.get(id)
+    #                         label1.config(image=tk_image)
+    #                         label1.image = (
+    #                             tk_image  # Keep reference to avoid garbage collection
+    #                         )
+    #                     else:
+    #                         label1 = tk.Label(
+    #                             left_frame, relief="solid", image=tk_image
+    #                         )
+    #                         label1.image = (
+    #                             tk_image  # Keep reference to avoid garbage collection
+    #                         )
+    #                         label1.grid(
+    #                             row=0, column=cnt, padx=10, pady=10
+    #                         )
+    #                         cnt += 1
+    #                         labels[id] = label1
+    #                 elif "OFF" in message:
+    #                     id = message["OFF"]
+    #                     label1 = labels.get(id)
+    #                     black_image = Image.new("RGB", (200, 150), "black")  # 创建黑色图像
+    #                     tk_black_image = ImageTk.PhotoImage(black_image) 
+    #                     label1.config(image=tk_black_image)
+    #                     label1.image = (tk_black_image)
+    #             except:
+    #                 pass
+    # send_task = asyncio.create_task(capture_video())
+    # receive_task = asyncio.create_task(display_video())
+    # try:
+    #     await asyncio.gather(send_task, receive_task)
+    # except asyncio.CancelledError:
+    #     print("Tasks were cancelled.")
+    # finally:
+    #     writer.close()
+    #     await writer.wait_closed()
 
 
 async def audio_send_receive(id, ip, port):
@@ -248,86 +202,125 @@ async def audio_send_receive(id, ip, port):
         await writer.wait_closed()
 
 
-async def text_send_receive(id, ip, port, chat_box):
-    # 建立连接
+async def text_send(id, ip, port, chat_box):
     reader, writer = await asyncio.open_connection(ip, port)
-
-    await asyncio.sleep(0.3)
-
-    # 发送包含 id 的消息 标注type
     message = {"client_id": id, "type": "text"}
     writer.write(json.dumps(message).encode())
     await writer.drain()  # 确保消息已发送
-
     print(f"send our id for text: {message}")
+    global text
+    while True:
+        await asyncio.sleep(0.1)
+        if Stop:
+            message = {"type": "quit", "client_id":id}
+            break
+        if text:
+            message = {
+                "client_id": id,
+                "type": "video", 
+                "data": text
+            }
+            writer.write(json.dumps(message).encode())
+            await writer.drain()
+            print(f"text 发送成功!: {message}")
+            text = None
 
-    async def send_messages():
-        # 发送消息
-        global text
-        while True:
-            if text:
-                message = {"text": f"{id}:{text}"}
-                writer.write(json.dumps(message).encode())
-                await writer.drain()
-                print(f"text 发送成功!: {message}")
-                text = None
-            await asyncio.sleep(0.1)
+    # async def receive_messages():
+    #     # 接收消息
+    #     while True:
+    #         if Stop:
+    #             break
+    #         print("awaiting data in receive_messages...")
+    #         data = await reader.read(100)
+    #         if not data:
+    #             print("Server closed the connection.")
+    #             break
 
-    async def receive_messages():
-        # 接收消息
-        while True:
-            print("awaiting data in receive_messages...")
-            data = await reader.read(100)
-            if not data:
-                print("Server closed the connection.")
-                break
+    #         message = json.loads(data.decode())
+    #         print(f"receive data: {message}")
 
-            message = json.loads(data.decode())
-            print(f"receive data: {message}")
+    #         if "text" in message:
+    #             tmp_text = message["text"]
+    #             parts = tmp_text.split(":", 1)
+    #             if parts[0] == id:
+    #                 tmp_text = "Me: " + parts[1]
+    #             add_message(chat_box, tmp_text)
+    #             # await asyncio.sleep(0.1)
 
-            if "text" in message:
-                tmp_text = message["text"]
-                parts = tmp_text.split(":", 1)
-                if parts[0] == id:
-                    tmp_text = "Me: " + parts[1]
-                add_message(chat_box, tmp_text)
-                # await asyncio.sleep(0.1)
+    #         await asyncio.sleep(0.1)
 
-            await asyncio.sleep(0.1)
+    # send_task = asyncio.create_task(send_messages())
+    # receive_task = asyncio.create_task(receive_messages())
 
-    send_task = asyncio.create_task(send_messages())
-    receive_task = asyncio.create_task(receive_messages())
-
-    try:
-        await asyncio.gather(send_task, receive_task)
-    except asyncio.CancelledError:
-        print("Tasks were cancelled.")
-    finally:
-        writer.close()
-        await writer.wait_closed()
+    # try:
+    #     await asyncio.gather(send_task, receive_task)
+    # except asyncio.CancelledError:
+    #     print("Tasks were cancelled.")
+    # finally:
+    #     writer.close()
+    #     await writer.wait_closed()
 
 
-def start_async_task_text(id, ip, port, chat_box):
+def start_async_task_text(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
     try:
-        loop.run_until_complete(text_send_receive(id, ip, port, chat_box))
+        loop.run_until_complete(text_send(id, ip, port))
     except Exception as e:
         print(f"Conn close in video task: {e}")
     finally:
         loop.close()
 
-
+async def display(id, ip, port, chat_box):
+    reader, writer = await asyncio.open_connection(ip, port)
+    message = {"client_id": id, "type": "receive"}
+    writer.write(json.dumps(message).encode())
+    await writer.drain() 
+    labels = {}
+    cnt = 0
+    while True:
+        if Stop:
+            break
+        data = await reader.read(1000000)
+        objects = parse_multiple_json_objects(data)
+        print(f'receive message {message["type"]}')
+        for message in objects:
+            if message["type"] == "video":
+                image = message["data"]
+                id = message["client_id"]
+                tk_image = ImageTk.PhotoImage(decompress_image(image))
+                if id not in labels.keys():
+                    labels[id] = tk.Label(left_frame, relief = "solid", image = tk_image)
+                    labels[id].grid(row = 0, column = cnt, padx=10, pady=10)
+                    cnt += 1
+                label = labels.get(id)
+                label.config(image = tk_image)
+                label.image = (tk_image)
+            elif message["type"] == "text":
+                text = message["data"]
+                cid = message["client_id"]
+                if cid == id:
+                    tmp_text = "Me: " + text
+                add_message(chat_box, tmp_text)
+                
 def start_async_task_video(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
     asyncio.set_event_loop(loop)  # 设置事件循环
     try:
-        loop.run_until_complete(video_send_receive(id, ip, port))
+        loop.run_until_complete(video_send(id, ip, port))
     except Exception as e:
         print(f"Conn close in video task: {e}")
     finally:
         loop.close()
-
+def start_async_task_display(id, ip, port, chat_box):
+    loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
+    asyncio.set_event_loop(loop)  # 设置事件循环
+    try:
+        loop.run_until_complete(display(id, ip, port, chat_box))
+    except Exception as e:
+        print(f"Conn close in display task: {e}")
+    finally:
+        loop.close()
 
 def start_async_task_audio(id, ip, port):
     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
@@ -341,7 +334,10 @@ def start_async_task_audio(id, ip, port):
 
 
 def start_ui(id, ip, port):
-    global window
+    global window, Stop, audio_active, video_active
+    Stop = False
+    audio_active = True
+    video_active = True
     # 初始化 pygame 的音频模块（确保只初始化一次）
     # pygame.mixer.init()
     # 创建主窗口
@@ -406,16 +402,18 @@ def start_ui(id, ip, port):
     #     target=start_async_task_text, args=(id, ip, port, text_widget)
     # )
     # sendtext_thread.start()
-    global send_video_thread
     send_video_thread = threading.Thread(
         target=start_async_task_video, args=(id, ip, port)
     )
     send_video_thread.start()
-    
-    send_audio_thread = threading.Thread(
-        target=start_async_task_audio, args=(id, ip, port)
+    display_thread = threading.Thread(
+        target=start_async_task_display,args=(id, ip, port, text_widget)
     )
-    send_audio_thread.start()
+    display_thread.start()
+    # send_audio_thread = threading.Thread(
+    #     target=start_async_task_audio, args=(id, ip, port)
+    # )
+    # send_audio_thread.start()
 
     # 音频控制按钮
     audio_button = tk.Button(
@@ -476,10 +474,6 @@ def start_ui(id, ip, port):
 def close_window():
     global window, Stop
     Stop = True
-    # global send_video
-    # if send_video is not None:
-    #     send_video.terminate()
-    #     send_video.join()     
     window.quit()
     window.destroy()
 

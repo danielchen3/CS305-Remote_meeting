@@ -37,6 +37,7 @@ class MainServer:
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
         self.conference_port = {}  # conference_id -> PORT
+        self.cnt = 0
 
     async def authenticate_user(self, reader, writer):
         """
@@ -84,9 +85,9 @@ class MainServer:
         create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
         """
         print("Start create conf...")
-        conference_id = len(self.conference_servers) + 1
+        conference_id = self.cnt + 1
         free_port = get_free_port()
-        conf_server = ConferenceServer(free_port)
+        conf_server = ConferenceServer(free_port, user_id)
         print(f"user_id:{user_id} create conference:{conference_id}Port:{free_port}")
         self.conference_servers[conference_id] = conf_server
         # 将user_id加入创建者名单

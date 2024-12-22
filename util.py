@@ -11,7 +11,8 @@ import numpy as np
 from PIL import Image, ImageGrab
 from config import *
 import base64
-
+import re
+import json
 # audio setting
 FORMAT = pyaudio.paInt16
 audio = pyaudio.PyAudio()
@@ -19,16 +20,28 @@ streamin = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, f
 streamout = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True, frames_per_buffer=CHUNK)
 
 # print warning if no available camera
-cap = cv2.VideoCapture(0)
-if cap.isOpened():
-    can_capture_camera = True
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
-else:
-    can_capture_camera = False
+# cap = cv2.VideoCapture(0)
+# if cap.isOpened():
+#     can_capture_camera = True
+#     cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+#     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+# else:
+#     can_capture_camera = False
 
 my_screen_size = pyautogui.size()
+def parse_multiple_json_objects(data):
+    # 使用正则表达式查找所有JSON对象
+    json_objects = re.findall(r"\{.*?\}", data.decode(), re.DOTALL)
 
+    # 解析每个JSON对象，丢弃不完整或无效的JSON对象
+    parsed_objects = []
+    for obj in json_objects:
+        try:
+            parsed_objects.append(json.loads(obj))
+        except json.JSONDecodeError:
+            # 如果解析失败，直接跳过这个对象
+            continue
+    return parsed_objects
 
 def resize_image_to_fit_screen(image, my_screen_size):
     screen_width, screen_height = my_screen_size
@@ -107,9 +120,12 @@ def capture_screen():
     img = ImageGrab.grab()
     return img
 
+cap = cv2.VideoCapture(0)
 
 def capture_camera():
     # capture frame of camera
+
+    # cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
     if not ret:
         raise Exception('Fail to capture frame from camera')
