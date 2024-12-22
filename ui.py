@@ -423,22 +423,22 @@ def start_ui(id, ip, port):
     audio_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
     # 加载图标（确保你有图标文件在路径中）
-    audio_icon = PhotoImage(file="icons/audio.png")  # 你的音频图标文件
-    video_icon = PhotoImage(file="icons/video.png")  # 你的视频图标文件
+    #audio_icon = PhotoImage(file="icons/audio.png")  # 你的音频图标文件
+    video_icon = PhotoImage(file="icons/video_on.png")  # 你的视频图标文件
 
     # 创建带图标的小按钮
-    audio_button = tk.Button(
-        frame,
-        text="Toggle Audio",
-        image=audio_icon,
-        compound="left",  # 图标在文字的左边
-        command=toggle_audioTransmission,
-        height=10,  # 设置按钮高度
-        width=10,  # 设置按钮宽度
-        bg="#4CAF50",  # 设置按钮背景色
-        fg="white",  # 设置字体颜色
-        relief="raised",  # 按钮边框样式
-    )
+    # audio_button = tk.Button(
+    #     frame,
+    #     text="Toggle Audio",
+    #     image=audio_icon,
+    #     compound="left",  # 图标在文字的左边
+    #     command=toggle_audioTransmission,
+    #     height=10,  # 设置按钮高度
+    #     width=10,  # 设置按钮宽度
+    #     bg="#4CAF50",  # 设置按钮背景色
+    #     fg="white",  # 设置字体颜色
+    #     relief="raised",  # 按钮边框样式
+    # )
 
     video_button = tk.Button(
         frame,
