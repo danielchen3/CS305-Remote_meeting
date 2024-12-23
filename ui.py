@@ -383,6 +383,7 @@ class APP:
             await asyncio.sleep(0.001)
 
     def update_audio(self, stream):
+        pre_audio = None
         while not self.Stop:
             audio_arrays = []
             if self.Stop:
@@ -392,18 +393,25 @@ class APP:
                 bytes_audio = base64.b64decode(data)
                 audio_arrays.append(np.frombuffer(bytes_audio, dtype=np.int16))
             if len(audio_arrays) == 0:
-                print("fail")
+                time.sleep(0.1)
+                # print("fail")
                 continue
             max_length = max(len(arr) for arr in audio_arrays)
             for i in range(len(audio_arrays)):
                 if len(audio_arrays[i]) < max_length:
                     audio_arrays[i] = np.pad(
-                        audio_arrays[i], (0, max_length - len(audio_arrays[i])), "constant"
+                        audio_arrays[i],
+                        (0, max_length - len(audio_arrays[i])),
+                        "constant",
                     )
             combined_audio = np.zeros(max_length, dtype=np.int16)
             for arr in audio_arrays:
                 combined_audio += arr
             final_audio = combined_audio.tobytes()
+            if final_audio == pre_audio:
+                continue
+            else:
+                pre_audio = final_audio
             print(final_audio)
             stream.write(final_audio)
 
