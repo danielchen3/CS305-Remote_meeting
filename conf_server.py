@@ -66,7 +66,7 @@ class ConferenceServer:
             asyncio.sleep(0.1)
             data = await reader.read(50000)
             if not data:
-                print('client disconnected!')
+                print("client disconnected!")
                 break
             print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
@@ -75,11 +75,11 @@ class ConferenceServer:
                 type = message.get("type")
                 if type == "receive":
                     self.writer_list[client_id] = writer
-                    return 
-                if type == 'quit':
+                    return
+                if type == "quit":
                     if client_id == self.owner:
                         await self.cancel_conference()
-                    else: 
+                    else:
                         await self.quit(client_id)
                     # tmp_message = {'type':'ack'}
                     # writer.write(json.dumps(tmp_message).encode())
@@ -89,22 +89,24 @@ class ConferenceServer:
                 tasks = []
                 print(f"receive is {message['type']}")
                 for key, writer in self.writer_list.items():
-                    print(f'send to {key}')
+                    print(f"send to {key}")
                     tasks.append(asyncio.create_task(_write_data(writer, data)))
                 await asyncio.gather(*tasks)
-        print(f'quit handle')
+        print(f"quit handle")
 
     async def log(self):
         while self.running:
             print(f"Server status: {len(self.reader_list)} clients connected")
+
     async def quit(self, id):
         if id in self.writer_list:
-            message = {"type":"quit"}
+            message = {"type": "quit", "client_id": id}
             writer = self.writer_list[id]
             writer.write(json.dumps(message).encode())
             await writer.drain()
             print(f"sent quit message {message} to {id}")
             del self.writer_list[id]
+
     async def cancel_conference(self):
         print(f"conf_server start canceling server")
         self.running = False
@@ -113,15 +115,15 @@ class ConferenceServer:
             print(f"start quit {key}")
             await self.quit(key)
 
-
     async def start(self):
         print("start")
         print(self.conf_serve_ports)
         await self.accept_clients()
-       # loop = asyncio.get_event_loop()
-        # loop.create_task(self.log())
-        #loop.create_task(self.accept_clients())
-        # loop.create_task(self.handle_audio())
+
+    # loop = asyncio.get_event_loop()
+    # loop.create_task(self.log())
+    # loop.create_task(self.accept_clients())
+    # loop.create_task(self.handle_audio())
 
     async def accept_clients(self):
         server = await asyncio.start_server(
@@ -135,7 +137,9 @@ class ConferenceServer:
             print("begin handle")
             all_data = []
             for client_id, reader in list(self.reader_list_audio.items()):
-                if not client_id in self.reader_list_audio:  # or not self.on_audio[client_id]:
+                if (
+                    not client_id in self.reader_list_audio
+                ):  # or not self.on_audio[client_id]:
                     continue
                 print(client_id)
                 data = await reader.read(10300)
@@ -169,7 +173,9 @@ class ConferenceServer:
         # 补齐音频数组
         for i in range(len(audio_arrays)):
             if len(audio_arrays[i]) < max_length:
-                audio_arrays[i] = np.pad(audio_arrays[i], (0, max_length - len(audio_arrays[i])), 'constant')
+                audio_arrays[i] = np.pad(
+                    audio_arrays[i], (0, max_length - len(audio_arrays[i])), "constant"
+                )
 
         # 将音频数组按帧逐个叠加
         combined_audio = np.zeros(max_length, dtype=np.int16)

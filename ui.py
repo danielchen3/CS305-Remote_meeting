@@ -83,6 +83,7 @@ class APP:
             "<Return>", lambda event: self.on_enter_pressed(self.entry_box)
         )
         self.window.protocol("WM_DELETE_WINDOW", self.close_window)
+        self.labels = {}
 
     def toggle_videoTransmission(self):
         self.video_active = not self.video_active
@@ -110,7 +111,7 @@ class APP:
 
     async def video_send(self, id, ip, port):
         reader, writer = await asyncio.open_connection(ip, port)
-        
+
         cap = cv2.VideoCapture(0)
         while True:
             if self.Stop:
@@ -155,6 +156,18 @@ class APP:
             # print(f'receive message {message["type"]} len = {len(objects)}')
             for message in objects:
                 if message["type"] == "quit":
+                    quit_client_id = message["client_id"]
+                    if quit_client_id == id:
+                        self.Stop = True
+                        break
+                    print(f"first imgs length is {len(self.imgs)}")
+                    print(f"first quit_client_id is {quit_client_id}")
+                    if quit_client_id in self.imgs.keys():
+                        self.labels[quit_client_id].destroy()
+                        del self.labels[quit_client_id]
+                        del self.imgs[quit_client_id]
+                    print(f"then imgs length is {len(self.imgs)}")
+                    print(f"then quit_client_id is {quit_client_id}")
                     break
             for message in objects:
                 if message["type"] == "video":
@@ -174,15 +187,23 @@ class APP:
         print("display STOP !!")
 
     def update_video(self):
-        labels = {}
         cnt = 0
-        for id, image in self.imgs.items():
+        # print(f"imgs length in update_video is {len(self.imgs)}")
+        # print(f"Labels length in update_video is {len(self.labels)}")
+        if self.Stop:
+            self.close_window()
+            return 
+        for id, image in self.imgs.copy().items():
             tk_image = ImageTk.PhotoImage(decompress_image(image))
-            if id not in labels.keys():
-                labels[id] = tk.Label(self.left_frame, relief="solid", image=tk_image)
-                labels[id].grid(row=0, column=cnt, padx=10, pady=10)
-                cnt += 1
-            label = labels.get(id)
+            if id not in self.labels.keys():
+                self.labels[id] = tk.Label(
+                    self.left_frame, relief="solid", image=tk_image
+                )
+                # self.labels[id].grid(row=0, column=cnt, padx=10, pady=10)
+                # cnt += 1
+            label = self.labels.get(id)
+            label.grid(row=0, column=cnt, padx=10, pady=10)
+            cnt += 1
             label.config(image=tk_image)
             label.image = tk_image
         self.window.after(10, self.update_video)
