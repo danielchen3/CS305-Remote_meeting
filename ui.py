@@ -21,7 +21,8 @@ class APP:
         self.imgs = {}
         self.window = tk.Tk()
         self.window.title("Video Conference")
-        self.window.geometry("1500x1000")
+        self.window.geometry("1000x900")
+        self.window.resizable(False, False)
         self.frame = tk.Frame(self.window)
         self.frame.pack(expand=True, fill=tk.BOTH)
 
@@ -30,7 +31,7 @@ class APP:
         )  # 设置背景颜色为灰色，模拟空白区域
         self.left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.left_frame.pack_propagate(False)  # 防止frame根据内容自适应大小
-        self.left_frame.config(width=800, height=1500)  # 固定大小
+        self.left_frame.config(width=150, height=800)  # 固定大小
 
         self.canvas = tk.Canvas(self.left_frame)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -74,17 +75,15 @@ class APP:
         
         self.video_button = tk.Button(
             self.frame,
-            # text="Toggle Video",
             image=self.video_icon,
-            compound="left",  # 图标在文字的左边
             padx=10,
             command=self.toggle_videoTransmission,
         )
         
         # self.audio_button.config(width=100, height=100)  # 设置按钮的宽度和高度
         # self.audio_button.grid(row=3, column=0, padx=10, pady=10)  # 移除 sticky
-        self.video_button.config(width=100, height=100)  # 设置按钮的宽度和高度
-        self.video_button.grid(row=4, column=0, padx=10, pady=10)  # 移除 sticky
+        self.video_button.config(width=60, height=80)  # 设置按钮的宽度和高度
+        self.video_button.grid(row=1, column=0, padx=10, pady=10, sticky="sw")
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
         self.entry_box.bind(
@@ -225,7 +224,7 @@ class APP:
                 # self.labels[id].grid(row=0, column=cnt, padx=10, pady=10)
                 # cnt += 1
             label = self.labels.get(id)
-            label.grid(row=0, column=cnt, padx=10, pady=10)
+            label.grid(row=cnt // 4, column=cnt % 4, padx=10, pady=10)
             cnt += 1
             label.config(image=tk_image)
             label.image = tk_image
