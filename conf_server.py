@@ -63,7 +63,7 @@ class ConferenceServer:
 
     async def handle_client(self, reader, writer):
         while self.running:
-            asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
             data = await reader.read(50000)
             if not data:
                 print("client disconnected!")
