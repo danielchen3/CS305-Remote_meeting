@@ -120,9 +120,7 @@ def capture_screen():
     img = ImageGrab.grab()
     return img
 
-cap = cv2.VideoCapture(0)
-
-def capture_camera():
+def capture_camera(cap):
     # capture frame of camera
 
     # cap = cv2.VideoCapture(0)

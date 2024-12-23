@@ -5,7 +5,7 @@ import json
 import numpy as np
 
 import config
-from ui import parse_multiple_json_objects
+from util import parse_multiple_json_objects
 
 
 async def _write_data(writer, data):

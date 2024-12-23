@@ -110,6 +110,8 @@ class APP:
 
     async def video_send(self, id, ip, port):
         reader, writer = await asyncio.open_connection(ip, port)
+        
+        cap = cv2.VideoCapture(0)
         while True:
             if self.Stop:
                 print("send stop!")
@@ -122,7 +124,7 @@ class APP:
             if not self.video_active:
                 compressed_image_base64 = black_image
             else:
-                camera_image = capture_camera()
+                camera_image = capture_camera(cap)
                 camera_image = camera_image.resize((200, 150), Image.LANCZOS)
                 compressed_image = compress_image(camera_image)
                 compressed_image_base64 = base64.b64encode(compressed_image).decode(
