@@ -103,13 +103,15 @@ class ConferenceServer:
             writer = self.writer_list[id]
             writer.write(json.dumps(message).encode())
             await writer.drain()
+            print(f"sent quit message {message} to {id}")
             del self.writer_list[id]
     async def cancel_conference(self):
         print(f"conf_server start canceling server")
         self.running = False
-        while self.writer_list:
-            key = next(iter(self.writer_list))
-            await quit(key)
+        for key in list(self.writer_list.keys()):
+            # key = next(iter(self.writer_list))
+            print(f"start quit {key}")
+            await self.quit(key)
 
 
     async def start(self):

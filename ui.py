@@ -95,12 +95,12 @@ class APP:
         reader, writer = await asyncio.open_connection(ip, port)
         while True:
             if self.Stop:
-                # print('send stop!')
-                # message = {"type": "quit", "client_id":id}
-                # writer.write(json.dumps(message).encode())
-                # await writer.drain()
+                print('send stop!')
+                message = {"type": "quit", "client_id":id}
+                writer.write(json.dumps(message).encode())
+                await writer.drain()
                 # data = await reader.read(100)
-                # print(data)
+                print(f"send quit message: {message} to client {id}")
                 break
             if not self.video_active:
                 compressed_image_base64 = black_image
@@ -128,6 +128,7 @@ class APP:
             if self.Stop:
                 break
             data = await reader.read(50000) #exit的时候会卡在这里
+            print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
             print(f'receive message {message["type"]} len = {len(objects)}')
             for message in objects:
@@ -183,9 +184,9 @@ class APP:
         reader, writer = await asyncio.open_connection(ip, port)
         while True:
             if self.Stop:
-                # message = {"type": "quit", "client_id":id}
-                # writer.write(json.dumps(message).encode())
-                # await writer.drain()
+                message = {"type": "quit", "client_id":id}
+                writer.write(json.dumps(message).encode())
+                await writer.drain()
                 break
             if self.text:
                 message = {
@@ -212,10 +213,10 @@ class APP:
             target=self.start_async_task_video, args=(id, ip, port)
         )
         send_video_thread.start()
-        send_text_thread = threading.Thread(
-            target=self.start_async_task_text, args=(id, ip, port)
-        )
-        send_text_thread.start()
+        # send_text_thread = threading.Thread(
+        #     target=self.start_async_task_text, args=(id, ip, port)
+        # )
+        # send_text_thread.start()
 
 
         display_thread = threading.Thread(
