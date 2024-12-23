@@ -12,6 +12,7 @@ from multiprocessing import Process
 import asyncio
 import json
 
+
 class APP:
     def __init__(self):
         self.Stop = False
@@ -24,7 +25,9 @@ class APP:
         self.frame = tk.Frame(self.window)
         self.frame.pack(expand=True, fill=tk.BOTH)
 
-        self.left_frame = tk.Frame(self.frame, bg="gray")  # 设置背景颜色为灰色，模拟空白区域
+        self.left_frame = tk.Frame(
+            self.frame, bg="gray"
+        )  # 设置背景颜色为灰色，模拟空白区域
         self.left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.left_frame.pack_propagate(False)  # 防止frame根据内容自适应大小
         self.left_frame.config(width=800, height=1500)  # 固定大小
@@ -32,7 +35,9 @@ class APP:
         self.canvas = tk.Canvas(self.left_frame)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.scrollbar = tk.Scrollbar(self.left_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = tk.Scrollbar(
+            self.left_frame, orient="vertical", command=self.canvas.yview
+        )
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.canvas.config(yscrollcommand=self.scrollbar.set)
         self.label_frame = tk.Frame(self.canvas)
@@ -74,29 +79,41 @@ class APP:
         self.video_button.grid(row=4, column=0, padx=2, pady=10, sticky="nsew")
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
-        self.entry_box.bind("<Return>", lambda event: self.on_enter_pressed(self.entry_box))
+        self.entry_box.bind(
+            "<Return>", lambda event: self.on_enter_pressed(self.entry_box)
+        )
         self.window.protocol("WM_DELETE_WINDOW", self.close_window)
+
     def toggle_videoTransmission(self):
         self.video_active = not self.video_active
+
     def on_enter_pressed(self, entry_box):
         entered_text = entry_box.get()
         self.text = entered_text
         entry_box.delete(0, tk.END)
+
     def close_window(self):
         self.Stop = True
-        self.window.quit()
-        self.window.destroy()
+        for thread in threading.enumerate():
+            if thread != threading.main_thread():
+                thread.join()
+        if self.window:
+            self.window.quit()
+            self.window.destroy()
+            self.window = None
+
     def add_message(self, chat_box, message):
         chat_box.config(state=tk.NORMAL)  # 使聊天框可编辑
         chat_box.insert(tk.END, message + "\n")  # 在聊天框中插入消息
         chat_box.yview(tk.END)  # 滚动到最后一行
         chat_box.config(state=tk.DISABLED)  # 禁用编辑
+
     async def video_send(self, id, ip, port):
         reader, writer = await asyncio.open_connection(ip, port)
         while True:
             if self.Stop:
-                print('send stop!')
-                message = {"type": "quit", "client_id":id}
+                print("send stop!")
+                message = {"type": "quit", "client_id": id}
                 writer.write(json.dumps(message).encode())
                 await writer.drain()
                 # data = await reader.read(100)
@@ -108,26 +125,29 @@ class APP:
                 camera_image = capture_camera()
                 camera_image = camera_image.resize((200, 150), Image.LANCZOS)
                 compressed_image = compress_image(camera_image)
-                compressed_image_base64 = base64.b64encode(compressed_image).decode("utf-8")
+                compressed_image_base64 = base64.b64encode(compressed_image).decode(
+                    "utf-8"
+                )
             message = {
                 "client_id": id,
-                "type": "video", 
-                "data": compressed_image_base64
+                "type": "video",
+                "data": compressed_image_base64,
             }
             writer.write(json.dumps(message).encode())
             await writer.drain()
             if not self.video_active:
                 await asyncio.sleep(0.1)
             await asyncio.sleep(0.025)
+
     async def display(self, id, ip, port, chat_box):
         reader, writer = await asyncio.open_connection(ip, port)
         message = {"client_id": id, "type": "receive"}
         writer.write(json.dumps(message).encode())
-        await writer.drain() 
+        await writer.drain()
         while True:
             if self.Stop:
                 break
-            data = await reader.read(50000) #exit的时候会卡在这里
+            data = await reader.read(50000)  # exit的时候会卡在这里
             print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
             print(f'receive message {message["type"]} len = {len(objects)}')
@@ -145,23 +165,25 @@ class APP:
                     if cid == id:
                         text = "Me: " + text
                     else:
-                        text = cid + ': ' + text
+                        text = cid + ": " + text
                     self.add_message(chat_box, text)
             asyncio.sleep(0.01)
-        print('display STOP !!')
+        print("display STOP !!")
+
     def update_video(self):
         labels = {}
         cnt = 0
         for id, image in self.imgs.items():
             tk_image = ImageTk.PhotoImage(decompress_image(image))
             if id not in labels.keys():
-                labels[id] = tk.Label(self.left_frame, relief = "solid", image = tk_image)
-                labels[id].grid(row = 0, column = cnt, padx=10, pady=10)
+                labels[id] = tk.Label(self.left_frame, relief="solid", image=tk_image)
+                labels[id].grid(row=0, column=cnt, padx=10, pady=10)
                 cnt += 1
             label = labels.get(id)
-            label.config(image = tk_image)
-            label.image = (tk_image)
+            label.config(image=tk_image)
+            label.image = tk_image
         self.window.after(10, self.update_video)
+
     def start_async_task_video(self, id, ip, port):
         loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
         asyncio.set_event_loop(loop)  # 设置事件循环
@@ -171,6 +193,7 @@ class APP:
             print(f"Conn close in video task: {e}")
         finally:
             loop.close()
+
     def start_async_task_display(self, id, ip, port, chat_box):
         loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
         asyncio.set_event_loop(loop)  # 设置事件循环
@@ -180,51 +203,50 @@ class APP:
             print(f"Conn close in display task: {e}")
         finally:
             loop.close()
+
     async def text_send(self, id, ip, port):
         reader, writer = await asyncio.open_connection(ip, port)
         while True:
             if self.Stop:
-                message = {"type": "quit", "client_id":id}
+                message = {"type": "quit", "client_id": id}
                 writer.write(json.dumps(message).encode())
                 await writer.drain()
                 break
             if self.text:
-                message = {
-                    "client_id": id,
-                    "type": "text", 
-                    "data": self.text
-                }
+                message = {"client_id": id, "type": "text", "data": self.text}
                 writer.write(json.dumps(message).encode())
                 await writer.drain()
                 print(f"text 发送成功!: {message}")
                 self.text = None
             await asyncio.sleep(1)
+
     def start_async_task_text(self, id, ip, port):
-        loop = asyncio.new_event_loop() 
-        asyncio.set_event_loop(loop) 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(self.text_send(id, ip, port))
         except Exception as e:
             print(f"Conn close in text task: {e}")
         finally:
             loop.close()
+
     def start(self, id, ip, port):
         send_video_thread = threading.Thread(
             target=self.start_async_task_video, args=(id, ip, port)
         )
         send_video_thread.start()
-        # send_text_thread = threading.Thread(
-        #     target=self.start_async_task_text, args=(id, ip, port)
-        # )
-        # send_text_thread.start()
-
+        send_text_thread = threading.Thread(
+            target=self.start_async_task_text, args=(id, ip, port)
+        )
+        send_text_thread.start()
 
         display_thread = threading.Thread(
-            target=self.start_async_task_display,args=(id, ip, port, self.text_widget)
+            target=self.start_async_task_display, args=(id, ip, port, self.text_widget)
         )
         display_thread.start()
         self.update_video()
         self.window.mainloop()
+
 
 # def toggle_audioTransmission():
 #     global audio_active
@@ -339,7 +361,7 @@ class APP:
 #         if text:
 #             message = {
 #                 "client_id": id,
-#                 "type": "video", 
+#                 "type": "video",
 #                 "data": text
 #             }
 #             writer.write(json.dumps(message).encode())
@@ -347,15 +369,15 @@ class APP:
 #             print(f"text 发送成功!: {message}")
 #             text = None
 # def start_async_task_text(id, ip, port):
-#     loop = asyncio.new_event_loop() 
-#     asyncio.set_event_loop(loop) 
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
 #     try:
 #         loop.run_until_complete(text_send(id, ip, port))
 #     except Exception as e:
 #         print(f"Conn close in video task: {e}")
 #     finally:
 #         loop.close()
-                
+
 # def start_async_task_video(id, ip, port):
 #     loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
 #     asyncio.set_event_loop(loop)  # 设置事件循环
@@ -445,7 +467,7 @@ class APP:
 #     )
 #     text_widget.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
 #     scrollbar.config(command=text_widget.yview)
-    
+
 #     # global send_video
 #     # send_video = Process(target=start_async_task_video, args=(id, ip, port))
 #     # send_video.start()
