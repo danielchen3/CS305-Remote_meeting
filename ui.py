@@ -63,20 +63,28 @@ class APP:
         self.text_widget.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
         self.scrollbar.config(command=self.text_widget.yview)
 
-        self.video_icon = PhotoImage(file="icons/video.png")
+        self.video_icon_on = self.resize_image(image_path="icons/video_on.png")
+        self.video_icon_off = self.resize_image(image_path="icons/video_off.png")
+        
+        self.audio_icon_on = self.resize_image(image_path="icons/audio_on.png")
+        self.audio_icon_off = self.resize_image(image_path="icons/audio_off.png")
+        
+        # self.audio_icon = self.audio_icon_on
+        self.video_icon = self.video_icon_on
+        
         self.video_button = tk.Button(
             self.frame,
-            text="Toggle Video",
+            # text="Toggle Video",
             image=self.video_icon,
             compound="left",  # 图标在文字的左边
+            padx=10,
             command=self.toggle_videoTransmission,
-            height=10,  # 设置按钮高度
-            width=10,  # 设置按钮宽度
-            bg="#007BFF",  # 设置按钮背景色
-            fg="white",  # 设置字体颜色
-            relief="raised",  # 按钮边框样式
         )
-        self.video_button.grid(row=4, column=0, padx=2, pady=10, sticky="nsew")
+        
+        # self.audio_button.config(width=100, height=100)  # 设置按钮的宽度和高度
+        # self.audio_button.grid(row=3, column=0, padx=10, pady=10)  # 移除 sticky
+        self.video_button.config(width=100, height=100)  # 设置按钮的宽度和高度
+        self.video_button.grid(row=4, column=0, padx=10, pady=10)  # 移除 sticky
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
         self.entry_box.bind(
@@ -84,9 +92,24 @@ class APP:
         )
         self.window.protocol("WM_DELETE_WINDOW", self.close_window)
         self.labels = {}
+        # 图像摆放
+        # 退出时候删去client
+        # 会议结束时候删去所有client以及会议名字
+        
 
+    def resize_image(self, image_path, size=(32, 32)):
+        img = Image.open(image_path)
+        img = img.resize(size, Image.Resampling.LANCZOS)
+        return PhotoImage(file=image_path).subsample(3, 3)
+    
     def toggle_videoTransmission(self):
         self.video_active = not self.video_active
+        if self.video_active:
+            self.video_icon = self.video_icon_on
+            self.video_button.config(image=self.video_icon)
+        else:
+            self.video_icon = self.video_icon_off
+            self.video_button.config(image=self.video_icon)
 
     def on_enter_pressed(self, entry_box):
         entered_text = entry_box.get()
