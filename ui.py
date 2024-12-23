@@ -17,7 +17,7 @@ class APP:
     def __init__(self):
         self.Stop = False
         self.video_active = False
-        self.audio_active = False
+        self.audio_active = True
         self.text = None
         self.imgs = {}
         self.window = tk.Tk()
@@ -322,9 +322,9 @@ class APP:
             target=self.start_async_task_display, args=(id, ip, port, self.text_widget)
         )
         display_thread.start()
-        update_audio_thread = threading.Thread(target=self.update_audio, args=(stream,))
-        update_audio_thread.start()
+
         self.update_video()
+        self.update_audio(stream, None)
 
         self.window.mainloop()
 
@@ -366,8 +366,7 @@ class APP:
                 print(f"send quit message: {message} to client {id}")
                 break
             if not self.audio_active:
-                await asyncio.sleep(0.1)
-                continue
+                cap_audio_base64 = ""
             else:
                 cap_audio = stream.read(CHUNK)
                 cap_audio_base64 = base64.b64encode(cap_audio).decode("utf-8")
@@ -382,21 +381,22 @@ class APP:
                 await asyncio.sleep(0.1)
             await asyncio.sleep(0.001)
 
-    def update_audio(self, stream):
-        pre_audio = None
-        while not self.Stop:
+    def update_audio(self, stream, pre_audio):
             audio_arrays = []
             if self.Stop:
                 self.close_window()
                 return
-            for id, data in self.audios.copy().items():
+            for _, data in self.audios.copy().items():
                 bytes_audio = base64.b64decode(data)
                 audio_arrays.append(np.frombuffer(bytes_audio, dtype=np.int16))
+            # if len(audio_arrays) == 0:
+            #     print("sleep")
+            #     time.sleep(1)
+            #     self.window.after(10, self.update_audio, stream, pre_audio)
             if len(audio_arrays) == 0:
-                time.sleep(0.1)
-                # print("fail")
-                continue
-            max_length = max(len(arr) for arr in audio_arrays)
+                max_length = 0
+            else:
+                max_length = max(len(arr) for arr in audio_arrays)
             for i in range(len(audio_arrays)):
                 if len(audio_arrays[i]) < max_length:
                     audio_arrays[i] = np.pad(
@@ -408,13 +408,13 @@ class APP:
             for arr in audio_arrays:
                 combined_audio += arr
             final_audio = combined_audio.tobytes()
-            if final_audio == pre_audio:
-                continue
-            else:
-                pre_audio = final_audio
+            # if final_audio == pre_audio:
+            #     self.window.after(10, self.update_audio, stream, pre_audio)
+            # else:
+            #     pre_audio = final_audio
             print(final_audio)
             stream.write(final_audio)
-
+            self.window.after(10, lambda :self.update_audio(stream, pre_audio))
 # async def text_send(id, ip, port, chat_box):
 #     reader, writer = await asyncio.open_connection(ip, port)
 #     message = {"client_id": id, "type": "text"}
