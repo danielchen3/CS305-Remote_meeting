@@ -17,6 +17,7 @@ class APP:
     def __init__(self):
         self.Stop = False
         self.video_active = False
+        self.audio_active = False
         self.text = None
         self.imgs = {}
         self.window = tk.Tk()
@@ -72,18 +73,24 @@ class APP:
 
         # self.audio_icon = self.audio_icon_on
         self.video_icon = self.video_icon_on
-
+        self.audio_icon = self.audio_icon_on
         self.video_button = tk.Button(
             self.frame,
             image=self.video_icon,
             padx=10,
             command=self.toggle_videoTransmission,
         )
+        self.audio_button = tk.Button(
+            self.frame,
+            image=self.audio_icon,
+            padx=10,
+            command=self.toggle_audioTransmission,
+        )
 
-        # self.audio_button.config(width=100, height=100)  # 设置按钮的宽度和高度
-        # self.audio_button.grid(row=3, column=0, padx=10, pady=10)  # 移除 sticky
+        self.audio_button.config(width=60, height=80)  # 设置按钮的宽度和高度
+        self.audio_button.grid(row=1, column=0, padx=10, pady=10, sticky="sw")
         self.video_button.config(width=60, height=80)  # 设置按钮的宽度和高度
-        self.video_button.grid(row=1, column=0, padx=10, pady=10, sticky="sw")
+        self.video_button.grid(row=1, column=1, padx=10, pady=10, sticky="sw")
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
         self.entry_box.bind(
@@ -171,7 +178,7 @@ class APP:
         while True:
             if self.Stop:
                 break
-            data = await reader.read(50000)  
+            data = await reader.read(50000)
             # print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
             # print(f'receive message {message["type"]} len = {len(objects)}')
@@ -254,7 +261,7 @@ class APP:
             frames_per_buffer=CHUNK,
         )
         try:
-            loop.run_until_complete(self.audio_send(stream,id, ip, port))
+            loop.run_until_complete(self.audio_send(stream, id, ip, port))
         except Exception as e:
             print(f"Conn close in audio task: {e}")
         finally:
@@ -321,14 +328,13 @@ class APP:
 
         self.window.mainloop()
 
-    audio_active = True
-
     def toggle_audioTransmission(self):
-        global audio_active
-        if not audio_active:
-            audio_active = True
+        if not self.audio_active:
+            self.audio_active = True
+            self.audio_icon = self.audio_icon_on
         else:
-            audio_active = False
+            self.audio_active = False
+            self.audio_icon = self.audio_icon_off
 
     # def toggle_videoTransmission():
     #     global video_active
@@ -374,7 +380,7 @@ class APP:
             await writer.drain()
             if not self.audio_active:
                 await asyncio.sleep(0.1)
-            await asyncio.sleep(0.005)
+            await asyncio.sleep(0.001)
 
     def update_audio(self, stream):
         while not self.Stop:

@@ -84,8 +84,6 @@ class ConferenceServer:
                     else:
                         await self.quit(client_id)
                     break
-                if type == "audio":
-                    data_read = 10300
             for message in objects:
                 tasks = []
                 print(f"receive is {message['type']}")
