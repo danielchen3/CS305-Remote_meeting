@@ -219,27 +219,26 @@ class APP:
         print("display STOP !!")
 
     def update_video(self):
-        while True:
-            cnt = 0
-            # print(f"imgs length in update_video is {len(self.imgs)}")
-            # print(f"Labels length in update_video is {len(self.labels)}")
-            if self.Stop:
-                self.close_window()
-                return
-            for id, image in self.imgs.copy().items():
-                tk_image = ImageTk.PhotoImage(decompress_image(image))
-                if id not in self.labels.keys():
-                    self.labels[id] = tk.Label(
-                        self.left_frame, relief="solid", image=tk_image
-                    )
-                    # self.labels[id].grid(row=0, column=cnt, padx=10, pady=10)
-                    # cnt += 1
-                label = self.labels.get(id)
-                label.grid(row=cnt // 4, column=cnt % 4, padx=10, pady=10)
-                cnt += 1
-                label.config(image=tk_image)
-                label.image = tk_image
-            time.sleep(0.01)
+        cnt = 0
+        # print(f"imgs length in update_video is {len(self.imgs)}")
+        # print(f"Labels length in update_video is {len(self.labels)}")
+        if self.Stop:
+            self.close_window()
+            return
+        for id, image in self.imgs.copy().items():
+            tk_image = ImageTk.PhotoImage(decompress_image(image))
+            if id not in self.labels.keys():
+                self.labels[id] = tk.Label(
+                    self.left_frame, relief="solid", image=tk_image
+                )
+                # self.labels[id].grid(row=0, column=cnt, padx=10, pady=10)
+                # cnt += 1
+            label = self.labels.get(id)
+            label.grid(row=cnt // 4, column=cnt % 4, padx=10, pady=10)
+            cnt += 1
+            label.config(image=tk_image)
+            label.image = tk_image
+        self.window.after(10, self.update_video)
 
     def start_async_task_video(self, id, ip, port):
         loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
