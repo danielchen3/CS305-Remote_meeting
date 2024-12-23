@@ -61,6 +61,7 @@ class ConferenceClient:
             self.on_meeting = True
             port = response["message"].split()[3]
             return port
+        return None
 
     async def quit_conference(self):
         """
@@ -195,6 +196,9 @@ class ConferenceClient:
                 elif cmd_input == "create":
                     ID = await self.create_conference()
                     PORT = await self.join_conference(ID)
+                    if PORT is None:
+                        print('cofenrence is not exist')
+                        continue
                     self.start_conference(PORT)
                     await self.quit_conference()
                     self.close_conference()
@@ -217,6 +221,9 @@ class ConferenceClient:
                     input_conf_id = fields[1]
                     if input_conf_id.isdigit():
                         PORT = await self.join_conference(input_conf_id)
+                        if PORT is None:
+                            print('cofenrence is not exist')
+                            continue
                         print(f"get port join is{PORT}")
                         self.start_conference(PORT)
                         await self.quit_conference()

@@ -173,7 +173,7 @@ class APP:
         while True:
             if self.Stop:
                 break
-            data = await reader.read(50000)  # exit的时候会卡在这里
+            data = await reader.read(50000)  
             # print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
             # print(f'receive message {message["type"]} len = {len(objects)}')

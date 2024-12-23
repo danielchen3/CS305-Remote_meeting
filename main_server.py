@@ -130,6 +130,7 @@ class MainServer:
         conference_id = self.client_connections.get(user_id)
         print(f'conferenceid is {conference_id}')
         if self.conference_creators.get(conference_id) != user_id:
+            self.client_connections.pop(user_id)
             return {
                 "status": True,
                 "message": f"User {user_id} has left conference {conference_id}.",
