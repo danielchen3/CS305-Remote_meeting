@@ -25,7 +25,7 @@ class APP:
         self.window.resizable(False, False)
         self.frame = tk.Frame(self.window)
         self.frame.pack(expand=True, fill=tk.BOTH)
-
+        self.audios = {}
         self.left_frame = tk.Frame(
             self.frame, bg="gray"
         )  # 设置背景颜色为灰色，模拟空白区域
@@ -66,20 +66,20 @@ class APP:
 
         self.video_icon_on = self.resize_image(image_path="icons/video_on.png")
         self.video_icon_off = self.resize_image(image_path="icons/video_off.png")
-        
+
         self.audio_icon_on = self.resize_image(image_path="icons/audio_on.png")
         self.audio_icon_off = self.resize_image(image_path="icons/audio_off.png")
-        
+
         # self.audio_icon = self.audio_icon_on
         self.video_icon = self.video_icon_on
-        
+
         self.video_button = tk.Button(
             self.frame,
             image=self.video_icon,
             padx=10,
             command=self.toggle_videoTransmission,
         )
-        
+
         # self.audio_button.config(width=100, height=100)  # 设置按钮的宽度和高度
         # self.audio_button.grid(row=3, column=0, padx=10, pady=10)  # 移除 sticky
         self.video_button.config(width=60, height=80)  # 设置按钮的宽度和高度
@@ -94,13 +94,12 @@ class APP:
         # 图像摆放
         # 退出时候删去client
         # 会议结束时候删去所有client以及会议名字
-        
 
     def resize_image(self, image_path, size=(32, 32)):
         img = Image.open(image_path)
         img = img.resize(size, Image.Resampling.LANCZOS)
         return PhotoImage(file=image_path).subsample(3, 3)
-    
+
     def toggle_videoTransmission(self):
         self.video_active = not self.video_active
         if self.video_active:
@@ -205,6 +204,10 @@ class APP:
                     else:
                         text = cid + ": " + text
                     self.add_message(chat_box, text)
+                elif message["type"] == "audio":
+                    audio_data = message["data"]
+                    audio_id = message["client_id"]
+                    self.audios[audio_id] = audio_data
             await asyncio.sleep(0.01)
         print("display STOP !!")
 
@@ -214,7 +217,7 @@ class APP:
         # print(f"Labels length in update_video is {len(self.labels)}")
         if self.Stop:
             self.close_window()
-            return 
+            return
         for id, image in self.imgs.copy().items():
             tk_image = ImageTk.PhotoImage(decompress_image(image))
             if id not in self.labels.keys():
@@ -237,6 +240,23 @@ class APP:
             loop.run_until_complete(self.video_send(id, ip, port))
         except Exception as e:
             print(f"Conn close in video task: {e}")
+        finally:
+            loop.close()
+
+    def start_async_task_audio(self, id, ip, port):
+        loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
+        asyncio.set_event_loop(loop)  # 设置事件循环
+        stream = pyaudio.PyAudio().open(
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=RATE,
+            input=True,
+            frames_per_buffer=CHUNK,
+        )
+        try:
+            loop.run_until_complete(self.audio_send(stream,id, ip, port))
+        except Exception as e:
+            print(f"Conn close in audio task: {e}")
         finally:
             loop.close()
 
@@ -277,10 +297,15 @@ class APP:
             loop.close()
 
     def start(self, id, ip, port):
+        stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)
         send_video_thread = threading.Thread(
             target=self.start_async_task_video, args=(id, ip, port)
         )
         send_video_thread.start()
+        send_audio_thread = threading.Thread(
+            target=self.start_async_task_audio, args=(id, ip, port)
+        )
+        send_audio_thread.start()
         send_text_thread = threading.Thread(
             target=self.start_async_task_text, args=(id, ip, port)
         )
@@ -290,105 +315,91 @@ class APP:
             target=self.start_async_task_display, args=(id, ip, port, self.text_widget)
         )
         display_thread.start()
+        update_audio_thread = threading.Thread(target=self.update_audio, args=(stream,))
+        update_audio_thread.start()
         self.update_video()
+
         self.window.mainloop()
 
+    audio_active = True
 
-# def toggle_audioTransmission():
-#     global audio_active
-#     if not audio_active:
-#         audio_active = True
-#     else:
-#         audio_active = False
+    def toggle_audioTransmission(self):
+        global audio_active
+        if not audio_active:
+            audio_active = True
+        else:
+            audio_active = False
 
+    # def toggle_videoTransmission():
+    #     global video_active
+    #     if not video_active:
+    #         video_active = True
+    #     else:
+    #         video_active = False
+    # def on_enter_pressed(entry_box):
+    #     global text
+    #     entered_text = entry_box.get()
+    #     text = entered_text
+    #     entry_box.delete(0, tk.END)
 
-# def toggle_videoTransmission():
-#     global video_active
-#     if not video_active:
-#         video_active = True
-#     else:
-#         video_active = False
-# def on_enter_pressed(entry_box):
-#     global text
-#     entered_text = entry_box.get()
-#     text = entered_text
-#     entry_box.delete(0, tk.END)
+    # def add_message(chat_box, message):
+    #     chat_box.config(state=tk.NORMAL)  # 使聊天框可编辑
+    #     chat_box.insert(tk.END, message + "\n")  # 在聊天框中插入消息
+    #     chat_box.yview(tk.END)  # 滚动到最后一行
+    #     chat_box.config(state=tk.DISABLED)  # 禁用编辑
 
-# def add_message(chat_box, message):
-#     chat_box.config(state=tk.NORMAL)  # 使聊天框可编辑
-#     chat_box.insert(tk.END, message + "\n")  # 在聊天框中插入消息
-#     chat_box.yview(tk.END)  # 滚动到最后一行
-#     chat_box.config(state=tk.DISABLED)  # 禁用编辑
+    async def audio_send(self, stream, id, ip, port):
+        reader, writer = await asyncio.open_connection(ip, port)
+        await asyncio.sleep(0.3)
+        while True:
+            if self.Stop:
+                print("send stop!")
+                message = {"type": "quit", "client_id": id}
+                writer.write(json.dumps(message).encode())
+                await writer.drain()
+                print(f"send quit message: {message} to client {id}")
+                break
+            if not self.audio_active:
+                await asyncio.sleep(0.1)
+                continue
+            else:
+                cap_audio = stream.read(CHUNK)
+                cap_audio_base64 = base64.b64encode(cap_audio).decode("utf-8")
+            message = {
+                "client_id": id,
+                "type": "audio",
+                "data": cap_audio_base64,
+            }
+            writer.write(json.dumps(message).encode())
+            await writer.drain()
+            if not self.audio_active:
+                await asyncio.sleep(0.1)
+            await asyncio.sleep(0.005)
 
-# async def audio_send_receive(id, ip, port):
-#     reader, writer = await asyncio.open_connection(ip, port)
-#     await asyncio.sleep(0.3)
-#     labels = {}
-#     global cnt
-
-#     # 发送包含 id 的消息
-#     message = {"client_id": id, "type": "audio"}
-#     writer.write(json.dumps(message).encode())
-#     await writer.drain()  # 确保消息已发送
-
-#     print(f"send our id for audio : {message}")
-
-#     async def capture_audios():
-#         stream = pyaudio.PyAudio().open(
-#             format=FORMAT,
-#             channels=CHANNELS,
-#             rate=RATE,
-#             input=True,
-#             frames_per_buffer=CHUNK,
-#         )
-
-#         # 捕获音频数据
-
-#         while True:
-#             if not audio_active:
-#                 await asyncio.sleep(0.001)
-#                 continue
-#             cap_audio = stream.read(CHUNK)
-
-#             cap_audio_base64 = base64.b64encode(cap_audio).decode("utf-8")
-
-#             message = {"audio": f"{cap_audio_base64}"}
-
-#             writer.write(json.dumps(message).encode())
-#             await writer.drain()
-
-#             # 控制视频发送的频率
-#             await asyncio.sleep(0.001)
-
-#     async def display_audio():
-#         global cnt
-#         audio = pyaudio.PyAudio()
-#         stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)
-#         try:
-#             while True:
-#                 if not audio_active:
-#                     await asyncio.sleep(0.001)
-#                     continue
-#                 data = await reader.read(10300)
-#                 if not data:
-#                     print("Server no data.")
-#                     continue
-#                 stream.write(data)
-#         except ConnectionAbortedError as e:
-#             print(f"Connection aborted: {e}")
-
-#     # 创建并发任务
-#     send_task = asyncio.create_task(capture_audios())
-#     receive_task = asyncio.create_task(display_audio())
-
-#     try:
-#         await asyncio.gather(send_task, receive_task)
-#     except asyncio.CancelledError:
-#         print("Tasks were cancelled.")
-#     finally:
-#         writer.close()
-#         await writer.wait_closed()
-
+    def update_audio(self, stream):
+        while not self.Stop:
+            audio_arrays = []
+            if self.Stop:
+                self.close_window()
+                return
+            for id, data in self.audios.copy().items():
+                bytes_audio = base64.b64decode(data)
+                audio_arrays.append(np.frombuffer(bytes_audio, dtype=np.int16))
+            if len(audio_arrays) == 0:
+                print("fail")
+                continue
+            max_length = max(len(arr) for arr in audio_arrays)
+            for i in range(len(audio_arrays)):
+                if len(audio_arrays[i]) < max_length:
+                    audio_arrays[i] = np.pad(
+                        audio_arrays[i], (0, max_length - len(audio_arrays[i])), "constant"
+                    )
+            combined_audio = np.zeros(max_length, dtype=np.int16)
+            for arr in audio_arrays:
+                combined_audio += arr
+            final_audio = combined_audio.tobytes()
+            print(final_audio)
+            stream.write(final_audio)
 
 # async def text_send(id, ip, port, chat_box):
 #     reader, writer = await asyncio.open_connection(ip, port)

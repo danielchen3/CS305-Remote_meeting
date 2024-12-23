@@ -62,13 +62,15 @@ class ConferenceServer:
         # print(0)
 
     async def handle_client(self, reader, writer):
+        data_read = 50000
         while self.running:
-            await asyncio.sleep(0.1)
-            data = await reader.read(50000)
+            # asyncio.sleep(0.1)
+            data = await reader.read(data_read)
+            print(data)
             if not data:
                 print("client disconnected!")
                 break
-            print(f"data is {data}")
+            # print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
             for message in objects:
                 client_id = message.get("client_id")
@@ -81,15 +83,14 @@ class ConferenceServer:
                         await self.cancel_conference()
                     else:
                         await self.quit(client_id)
-                    # tmp_message = {'type':'ack'}
-                    # writer.write(json.dumps(tmp_message).encode())
-                    # await writer.drain()
                     break
+                if type == "audio":
+                    data_read = 10300
             for message in objects:
                 tasks = []
                 print(f"receive is {message['type']}")
                 for key, writer in self.writer_list.items():
-                    print(f"send to {key}")
+                    # print(f"send to {key}")
                     tasks.append(asyncio.create_task(_write_data(writer, data)))
                 await asyncio.gather(*tasks)
         print(f"quit handle")
