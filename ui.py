@@ -162,6 +162,7 @@ class APP:
                 elif message["type"] == "text":
                     text = message["data"]
                     cid = message["client_id"]
+                    print(f"we start comparing cid is {cid} and id is {id}")
                     if cid == id:
                         text = "Me: " + text
                     else:
