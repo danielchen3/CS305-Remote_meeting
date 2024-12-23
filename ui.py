@@ -150,17 +150,17 @@ class APP:
             if self.Stop:
                 break
             data = await reader.read(50000)  # exit的时候会卡在这里
-            print(f"data is {data}")
+            # print(f"data is {data}")
             objects = parse_multiple_json_objects(data)
-            print(f'receive message {message["type"]} len = {len(objects)}')
+            # print(f'receive message {message["type"]} len = {len(objects)}')
             for message in objects:
                 if message["type"] == "quit":
                     break
             for message in objects:
                 if message["type"] == "video":
                     image = message["data"]
-                    id = message["client_id"]
-                    self.imgs[id] = image
+                    viedo_id = message["client_id"]
+                    self.imgs[viedo_id] = image
                 elif message["type"] == "text":
                     text = message["data"]
                     cid = message["client_id"]
