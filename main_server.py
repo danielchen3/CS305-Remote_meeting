@@ -85,7 +85,8 @@ class MainServer:
         create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
         """
         print("Start create conf...")
-        conference_id = self.cnt + 1
+        self.cnt = self.cnt + 1
+        conference_id = self.cnt
         free_port = get_free_port()
         conf_server = ConferenceServer(free_port, user_id)
         print(f"user_id:{user_id} create conference:{conference_id}Port:{free_port}")
@@ -177,7 +178,7 @@ class MainServer:
             for conf in active_conferences
         )
 
-        return {"status": True, "message": active_conferences}
+        return {"status": True, "message": formatted_conferences}
 
     async def request_handler(self, reader, writer):
         """

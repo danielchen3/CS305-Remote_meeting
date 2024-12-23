@@ -183,7 +183,7 @@ class APP:
                     else:
                         text = cid + ": " + text
                     self.add_message(chat_box, text)
-            asyncio.sleep(0.01)
+            await asyncio.sleep(0.01)
         print("display STOP !!")
 
     def update_video(self):
