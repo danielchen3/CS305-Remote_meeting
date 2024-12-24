@@ -149,12 +149,15 @@ class new_APP:
 
     def close_window(self):
         self.Stop = True
+        self.audio_active = False
+        self.video_active = False
         for thread in threading.enumerate():
             print(thread)
             if thread != threading.main_thread():
                 thread.join()
         if self.window:
-            self.window.after_cancel(self.task)
+            self.window.after_cancel(self.task_video)
+            self.window.after_cancel(self.task_audio)
             self.window.quit()
             self.window.destroy()
             self.window = None
@@ -265,7 +268,7 @@ class new_APP:
             cnt += 1
             label.config(image=tk_image)
             label.image = tk_image
-        self.task = self.window.after(10, self.update_video)
+        self.task_video = self.window.after(10, self.update_video)
 
     def start_async_task_server(self, id, port):
         loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
@@ -454,7 +457,7 @@ class new_APP:
             #     pre_audio = final_audio
             # print(final_audio)
             stream.write(final_audio)
-            self.window.after(10, lambda :self.update_audio(stream, pre_audio))
+            self.task_audio = self.window.after(10, lambda :self.update_audio(stream, pre_audio))
 
     async def stop_server(self):
         print(self.running)

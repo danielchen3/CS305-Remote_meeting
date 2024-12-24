@@ -66,7 +66,7 @@ class ConferenceServer:
         while self.running:
             # asyncio.sleep(0.1)
             data = await reader.read(data_read)
-            print(data)
+            # print(data)
             if not data:
                 print("client disconnected!")
                 break
@@ -86,7 +86,7 @@ class ConferenceServer:
                     break
             for message in objects:
                 tasks = []
-                print(f"receive is {message['type']}")
+                # print(f"receive is {message['type']}")
                 for key, writer in self.writer_list.items():
                     # print(f"send to {key}")
                     tasks.append(asyncio.create_task(_write_data(writer, data)))
