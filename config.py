@@ -5,7 +5,7 @@ HELP = 'Create         : create an conference\n' \
 
 SERVER_IP = '10.27.96.101'
 # 这个要修改成自己的IP
-P2P_own_IP = '10.32.31.147'
+P2P_own_IP = '10.32.165.243'
 MAIN_SERVER_PORT = 8888
 TIMEOUT_SERVER = 5
 # DGRAM_SIZE = 1500  # UDP

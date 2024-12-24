@@ -22,7 +22,7 @@ class APP:
         self.imgs = {}
         self.window = tk.Tk()
         self.window.title("Video Conference")
-        self.window.geometry("1000x900")
+        self.window.geometry("1500x1200")
         self.window.resizable(False, False)
         self.frame = tk.Frame(self.window)
         self.frame.pack(expand=True, fill=tk.BOTH)
@@ -396,7 +396,7 @@ class APP:
             }
             writer.write(json.dumps(message).encode())
             await writer.drain()
-            await asyncio.sleep(0.01 if self.audio_active else 0.1)
+            await asyncio.sleep(0.05 if self.audio_active else 0.1)
             # if not self.audio_active:
             #     await asyncio.sleep(0.1)
             # await asyncio.sleep(0.001)
@@ -434,7 +434,7 @@ class APP:
         #     pre_audio = final_audio
         # print(final_audio)
         stream.write(final_audio)
-        self.task_audio = self.window.after(2, lambda: self.update_audio(stream, pre_audio))
+        self.task_audio = self.window.after(10, lambda: self.update_audio(stream, pre_audio))
 
 
 # async def text_send(id, ip, port, chat_box):
