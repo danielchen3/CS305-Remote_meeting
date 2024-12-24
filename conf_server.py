@@ -18,7 +18,7 @@ class ConferenceServer:
         self.conf_serve_ports = free_port
         self.data_serve_ports = {}
         self.data_types = ["screen", "camera", "audio"]
-        # 不同类型中存储不同类型对应用户的reader,writer 对应关系ex. id -> text writer/reader
+        # 不同类型中存储不同类型对应用户的reader, writer 对应关系ex. id -> text writer/reader
         self.reader_list_audio = {}
         self.writer_list = {}
         self.running = True

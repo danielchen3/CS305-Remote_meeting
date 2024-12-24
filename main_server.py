@@ -37,6 +37,8 @@ class MainServer:
         self.writer_connect = defaultdict(set)  # user_id -> writer
         self.reader_connect = defaultdict(set)  # user_id -> reader
         self.conference_port = {}  # conference_id -> PORT
+        self.p2p_conference = {}
+        self.p2p_server = {}
         self.cnt = 0
 
     async def authenticate_user(self, reader, writer):
@@ -89,7 +91,9 @@ class MainServer:
         conference_id = self.cnt
         free_port = get_free_port()
         conf_server = ConferenceServer(free_port, user_id)
-        print(f"user_id:{user_id} create conference:{conference_id}Port:{free_port}")
+        print(
+            f"user_id:{user_id} create conference:{conference_id} Port: {free_port}, MODE is CS"
+        )
         self.conference_servers[conference_id] = conf_server
         # 将user_id加入创建者名单
         self.conference_creators[conference_id] = user_id
@@ -102,23 +106,69 @@ class MainServer:
             "message": f"Create conference {conference_id} {free_port} successfully",
         }
 
+    # 新加入的人注意判定是不是超过两个人的p2p会议
+
+    def handle_create_conference_p2p(self, user_id):
+        """
+        create conference: create and start the corresponding ConferenceServer, and reply necessary info to client
+        """
+        print("Start create p2p_conf...")
+        self.cnt = self.cnt + 1
+        conference_id = self.cnt
+        # free_port = get_free_port()
+        # print(f"user_id:{user_id} create conference:{conference_id} Port: {free_port}, MODE is P2P")
+        # 将user_id加入创建者名单
+        self.conference_creators[conference_id] = user_id
+        self.p2p_conference[conference_id] = set()
+        self.p2p_conference[conference_id].add(user_id)
+        self.client_connections[user_id] = conference_id
+        # 应该从client端找一个空余的port
+        print(f"Conference {conference_id}: created by {user_id}.(P2P)")
+        # self.conference_port[conference_id] = free_port
+        return {
+            "status": True,
+            "message": f"Create conference {conference_id} (P2P) successfully",
+        }
+
     def handle_join_conference(self, user_id, conference_id):
         """
         join conference: search corresponding conference_info and ConferenceServer, and reply necessary info to client
         """
         conference_id = int(conference_id)
         print(f"conf:{conference_id}")
-        if conference_id not in self.conference_servers.keys():
+        # 顺便告诉client是不是p2p
+        is_p2p = False
+        if (
+            conference_id not in self.conference_servers.keys()
+            and conference_id not in self.p2p_conference.keys()
+        ):
             return {"status": False, "error": "Conference not found"}
+        # 如果满了的话禁止加入
+        elif conference_id in self.p2p_conference.keys():
+            is_p2p = True
+            if len(self.p2p_conference[conference_id]) >= 2:
+                return {"status": False, "error": "Conference is full"}
+            else:
+                print(
+                    f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}. MODE is P2P"
+                )
+                self.p2p_conference[conference_id].add(user_id)
+                creator_ip, creator_port, creator_writer = self.p2p_server[
+                    conference_id
+                ]
+                return {
+                    "status": True,
+                    "message": f"Joined Conference {conference_id} {creator_port} {'1' if is_p2p else '0'} {creator_ip} successfully.",
+                }
 
         # # 将user_id的会议集中加入会议, 触发conf_server类中的加入用户方法
         # asyncio.create_task(self.conference_servers[conference_id].accept_clients(self.reader_connect[user_id], self.writer_connect[user_id]))
         print(
-            f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}."
+            f"User {user_id} joined Conference {conference_id} held by {self.conference_creators[conference_id]}. MODE is CS"
         )
         return {
             "status": True,
-            "message": f"Joined Conference {conference_id} {self.conference_port[conference_id]} successfully",
+            "message": f"Joined Conference {conference_id} {self.conference_port[conference_id]} {'1' if is_p2p else '0'} successfully.",
         }
 
     def handle_quit_conference(self, user_id):
@@ -128,7 +178,7 @@ class MainServer:
         # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
         print(user_id)
         conference_id = self.client_connections.get(user_id)
-        print(f'conferenceid is {conference_id}')
+        print(f"conferenceid is {conference_id}")
         if self.conference_creators.get(conference_id) != user_id:
             return {
                 "status": True,
@@ -138,7 +188,22 @@ class MainServer:
         return self.handle_cancel_conference(
             user_id=user_id, conference_id=conference_id
         )
-
+    def handle_quit_conference_p2p(self, user_id):
+        """
+        quit conference (in-meeting request & or no need to request)
+        """
+        # 如果不是这个会议的创建者，那么就只是退出，把会议从他的参与会议中移除
+        conference_id = self.client_connections.get(user_id)
+        print(f"conferenceid is {conference_id}")
+        if conference_id in self.p2p_conference:
+            conf_server = self.p2p_conference.pop(conference_id)
+            # 调用conf_server的取消会议函数
+            # conf_server.cancel_conference()
+            del self.conference_creators[conference_id]
+        return {
+            "status": True,
+            "message": f"User {user_id} has left conference.(p2p). Meeting has been cancelled",
+        }
     def handle_cancel_conference(self, user_id, conference_id):
         """
         cancel conference (in-meeting request, a ConferenceServer should be closed by the MainServer)
@@ -154,7 +219,7 @@ class MainServer:
         # 取消的话，就把会议从会议列表中移除
         conf_server = self.conference_servers.pop(conference_id)
         # 调用conf_server的取消会议函数
-        conf_server.cancel_conference()
+        # conf_server.cancel_conference()
         del self.conference_creators[conference_id]
 
         # 把会议编号从每个参会者参会列表中移除
@@ -165,7 +230,7 @@ class MainServer:
         return {"status": True, "message": f"Conference {conference_id} canceled"}
 
     def get_active_conferences(self):
-        if not self.conference_servers:
+        if not self.conference_servers and not self.p2p_conference:
             return {"status": False, "message": "No active conferences available."}
 
         active_conferences = [
@@ -173,10 +238,22 @@ class MainServer:
             for conf_id in self.conference_servers
         ]
 
-        formatted_conferences = "; ".join(
-            f"conference_id {conf['conference_id']}(created by {conf['creator']}"
+        print(f"p2p_conf_length is {len(self.p2p_conference)}")
+
+        # 常规会议信息
+        regular_conf_info = [
+            f"conference_id {conf['conference_id']}(created by {conf['creator']})"
             for conf in active_conferences
-        )
+        ]
+
+        # P2P会议信息
+        p2p_conf_info = [
+            f"conference_id {conf_id}[P2P](created by {self.conference_creators[conf_id]})"
+            for conf_id in self.p2p_conference.keys()
+        ]
+
+        # 合并两种会议信息
+        formatted_conferences = "; ".join(regular_conf_info + p2p_conf_info)
 
         return {"status": True, "message": formatted_conferences}
 
@@ -214,11 +291,43 @@ class MainServer:
                     response = self.handle_join_conference(user_id, conference_id)
                 elif message["type"] == "quit":
                     response = self.handle_quit_conference(user_id)
+                elif message["type"] == "quitp2p":
+                    response = self.handle_quit_conference_p2p(user_id)
                 elif message["type"] == "cancel":
                     # conference_id = message["conference_id"]
                     response = self.handle_cancel_conference(user_id)
                 elif message["type"] == "view":
                     response = self.get_active_conferences()
+                elif message["type"] == "p2p":
+                    response = self.handle_create_conference_p2p(user_id)
+                elif message["type"] == "send_p2p":
+                    conference_id = message["conference_id"]
+                    conference_id = int(conference_id)
+                    print(f"conference_id is: {conference_id}")
+                    p2p_ip = message["ip"]
+                    print(f"p2p_ip is: {p2p_ip}")
+                    p2p_port = message["port"]
+                    print(f"p2p_port is: {p2p_port}")
+                    self.p2p_server[conference_id] = (p2p_ip, p2p_port, writer)
+                    response = {"status": True, "message": "send p2p ip successfully"}
+                    # while True:
+                    #     if len(self.p2p_conference[conference_id]) == 2:
+                    #         break
+                    #     await asyncio.sleep(0.1)
+                elif message["type"] == "join_p2p":
+                    conference_id = message["conference_id"]
+                    conference_id = int(conference_id)
+                    peer_ip = message["ip"]
+                    peer_port = message["port"]
+                    message1 = {
+                        "status": True,
+                        "peer_ip": peer_ip,
+                        "peer_port": peer_port,
+                    }
+                    _, _, creator_writer = self.p2p_server[conference_id]
+                    creator_writer.write(json.dumps(message1).encode())
+                    await creator_writer.drain()
+                    print("finish writing")
                 elif message["type"] == "exit":
                     break
                 else:

@@ -4,6 +4,8 @@ HELP = 'Create         : create an conference\n' \
        'Cancel         : cancel your on-going conference (only the manager)\n\n'
 
 SERVER_IP = '127.0.0.1'
+# 这个要修改成自己的IP
+P2P_own_IP = '127.0.0.1'
 MAIN_SERVER_PORT = 8888
 TIMEOUT_SERVER = 5
 # DGRAM_SIZE = 1500  # UDP

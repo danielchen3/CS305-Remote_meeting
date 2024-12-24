@@ -72,8 +72,8 @@ class APP:
         self.audio_icon_off = self.resize_image(image_path="icons/audio_off.png")
 
         # self.audio_icon = self.audio_icon_on
-        self.video_icon = self.video_icon_on
-        self.audio_icon = self.audio_icon_on
+        self.video_icon = self.video_icon_off
+        self.audio_icon = self.audio_icon_off
         self.video_button = tk.Button(
             self.frame,
             image=self.video_icon,
@@ -90,7 +90,7 @@ class APP:
         self.audio_button.config(width=60, height=80)  # 设置按钮的宽度和高度
         self.audio_button.grid(row=1, column=0, padx=10, pady=10, sticky="sw")
         self.video_button.config(width=60, height=80)  # 设置按钮的宽度和高度
-        self.video_button.grid(row=1, column=1, padx=10, pady=10, sticky="sw")
+        self.video_button.grid(row=2, column=0, padx=10, pady=10, sticky="sw")
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
         self.entry_box.bind(
@@ -115,6 +115,16 @@ class APP:
         else:
             self.video_icon = self.video_icon_off
             self.video_button.config(image=self.video_icon)
+        
+    def toggle_audioTransmission(self):
+        if not self.audio_active:
+            self.audio_active = True
+            self.audio_icon = self.audio_icon_on
+            self.audio_button.config(image=self.audio_icon)
+        else:
+            self.audio_active = False
+            self.audio_icon = self.audio_icon_off
+            self.audio_button.config(image=self.audio_icon)
 
     def on_enter_pressed(self, entry_box):
         entered_text = entry_box.get()
@@ -127,6 +137,7 @@ class APP:
             if thread != threading.main_thread():
                 thread.join()
         if self.window:
+            self.window.after_cancel(self.task)
             self.window.quit()
             self.window.destroy()
             self.window = None
@@ -185,15 +196,15 @@ class APP:
                     quit_client_id = message["client_id"]
                     if quit_client_id == id:
                         self.Stop = True
-                        break
-                    print(f"first imgs length is {len(self.imgs)}")
-                    print(f"first quit_client_id is {quit_client_id}")
+                        return 
+                    # print(f"first imgs length is {len(self.imgs)}")
+                    # print(f"first quit_client_id is {quit_client_id}")
                     if quit_client_id in self.imgs.keys():
                         self.labels[quit_client_id].destroy()
                         del self.labels[quit_client_id]
                         del self.imgs[quit_client_id]
-                    print(f"then imgs length is {len(self.imgs)}")
-                    print(f"then quit_client_id is {quit_client_id}")
+                    # print(f"then imgs length is {len(self.imgs)}")
+                    # print(f"then quit_client_id is {quit_client_id}")
                     break
             for message in objects:
                 if message["type"] == "video":
@@ -236,7 +247,7 @@ class APP:
             cnt += 1
             label.config(image=tk_image)
             label.image = tk_image
-        self.window.after(10, self.update_video)
+        self.task = self.window.after(10, self.update_video)
 
     def start_async_task_video(self, id, ip, port):
         loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
@@ -326,14 +337,6 @@ class APP:
 
         self.window.mainloop()
 
-    def toggle_audioTransmission(self):
-        if not self.audio_active:
-            self.audio_active = True
-            self.audio_icon = self.audio_icon_on
-        else:
-            self.audio_active = False
-            self.audio_icon = self.audio_icon_off
-
     # def toggle_videoTransmission():
     #     global video_active
     #     if not video_active:
@@ -381,39 +384,41 @@ class APP:
             # await asyncio.sleep(0.001)
 
     def update_audio(self, stream, pre_audio):
-            audio_arrays = []
-            if self.Stop:
-                self.close_window()
-                return
-            for _, data in self.audios.copy().items():
-                bytes_audio = base64.b64decode(data)
-                audio_arrays.append(np.frombuffer(bytes_audio, dtype=np.int16))
-            # if len(audio_arrays) == 0:
-            #     print("sleep")
-            #     time.sleep(1)
-            #     self.window.after(10, self.update_audio, stream, pre_audio)
-            if len(audio_arrays) == 0:
-                max_length = 0
-            else:
-                max_length = max(len(arr) for arr in audio_arrays)
-            for i in range(len(audio_arrays)):
-                if len(audio_arrays[i]) < max_length:
-                    audio_arrays[i] = np.pad(
-                        audio_arrays[i],
-                        (0, max_length - len(audio_arrays[i])),
-                        "constant",
-                    )
-            combined_audio = np.zeros(max_length, dtype=np.int16)
-            for arr in audio_arrays:
-                combined_audio += arr
-            final_audio = combined_audio.tobytes()
-            # if final_audio == pre_audio:
-            #     self.window.after(10, self.update_audio, stream, pre_audio)
-            # else:
-            #     pre_audio = final_audio
-            print(final_audio)
-            stream.write(final_audio)
-            self.window.after(10, lambda :self.update_audio(stream, pre_audio))
+        audio_arrays = []
+        if self.Stop:
+            self.close_window()
+            return
+        for _, data in self.audios.copy().items():
+            bytes_audio = base64.b64decode(data)
+            audio_arrays.append(np.frombuffer(bytes_audio, dtype=np.int16))
+        # if len(audio_arrays) == 0:
+        #     print("sleep")
+        #     time.sleep(1)
+        #     self.window.after(10, self.update_audio, stream, pre_audio)
+        if len(audio_arrays) == 0:
+            max_length = 0
+        else:
+            max_length = max(len(arr) for arr in audio_arrays)
+        for i in range(len(audio_arrays)):
+            if len(audio_arrays[i]) < max_length:
+                audio_arrays[i] = np.pad(
+                    audio_arrays[i],
+                    (0, max_length - len(audio_arrays[i])),
+                    "constant",
+                )
+        combined_audio = np.zeros(max_length, dtype=np.int16)
+        for arr in audio_arrays:
+            combined_audio += arr
+        final_audio = combined_audio.tobytes()
+        # if final_audio == pre_audio:
+        #     self.window.after(10, self.update_audio, stream, pre_audio)
+        # else:
+        #     pre_audio = final_audio
+        # print(final_audio)
+        stream.write(final_audio)
+        self.window.after(10, lambda: self.update_audio(stream, pre_audio))
+
+
 # async def text_send(id, ip, port, chat_box):
 #     reader, writer = await asyncio.open_connection(ip, port)
 #     message = {"client_id": id, "type": "text"}

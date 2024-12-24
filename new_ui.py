@@ -20,8 +20,8 @@ import numpy as np
 import config
 from util import parse_multiple_json_objects
 
-class APP:
-    def __init__(self, free_port, owner):
+class new_APP:
+    def __init__(self, free_port):
         self.server = None
         self.conf_serve_ports = free_port
         self.data_serve_ports = {}
@@ -30,14 +30,13 @@ class APP:
         self.reader_list_audio = {}
         self.writer_list = {}
         self.running = 0
-        self.owner = owner
         self.Stop = False
         self.video_active = False
         self.audio_active = False
         self.text = None
         self.imgs = {}
         self.window = tk.Tk()
-        self.window.title("Video Conference")
+        self.window.title("Video Conference(p2p)")
         self.window.geometry("1000x900")
         self.window.resizable(False, False)
         self.frame = tk.Frame(self.window)
@@ -88,8 +87,8 @@ class APP:
         self.audio_icon_off = self.resize_image(image_path="icons/audio_off.png")
 
         # self.audio_icon = self.audio_icon_on
-        self.video_icon = self.video_icon_on
-        self.audio_icon = self.audio_icon_on
+        self.video_icon = self.video_icon_off
+        self.audio_icon = self.audio_icon_off
         self.video_button = tk.Button(
             self.frame,
             image=self.video_icon,
@@ -106,11 +105,11 @@ class APP:
         self.audio_button.config(width=60, height=80)  # 设置按钮的宽度和高度
         self.audio_button.grid(row=1, column=0, padx=10, pady=10, sticky="sw")
         self.video_button.config(width=60, height=80)  # 设置按钮的宽度和高度
-        self.video_button.grid(row=1, column=1, padx=10, pady=10, sticky="sw")
+        self.video_button.grid(row=2, column=0, padx=10, pady=10, sticky="sw")
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
         self.entry_box.bind(
-            "<Return>", lambda event: self.on_enter_pressed(self.entry_box)
+            "<Return>", lambda event: self.on_enter_pressed(self.entry_box, self.text_widget)
         )
         self.window.protocol("WM_DELETE_WINDOW", self.close_window)
         self.labels = {}
@@ -131,10 +130,21 @@ class APP:
         else:
             self.video_icon = self.video_icon_off
             self.video_button.config(image=self.video_icon)
+            
+    def toggle_audioTransmission(self):
+        if not self.audio_active:
+            self.audio_active = True
+            self.audio_icon = self.audio_icon_on
+            self.audio_button.config(image=self.audio_icon)
+        else:
+            self.audio_active = False
+            self.audio_icon = self.audio_icon_off
+            self.audio_button.config(image=self.audio_icon)
 
-    def on_enter_pressed(self, entry_box):
+    def on_enter_pressed(self, entry_box, chat_box):
         entered_text = entry_box.get()
         self.text = entered_text
+        self.add_message(chat_box, "Me: " + entered_text)
         entry_box.delete(0, tk.END)
 
     def close_window(self):
@@ -144,6 +154,7 @@ class APP:
             if thread != threading.main_thread():
                 thread.join()
         if self.window:
+            self.window.after_cancel(self.task)
             self.window.quit()
             self.window.destroy()
             self.window = None
@@ -176,6 +187,7 @@ class APP:
                 compressed_image_base64 = base64.b64encode(compressed_image).decode(
                     "utf-8"
                 )
+            self.imgs[id] = compressed_image_base64
             message = {
                 "client_id": id,
                 "type": "video",
@@ -253,7 +265,7 @@ class APP:
             cnt += 1
             label.config(image=tk_image)
             label.image = tk_image
-        self.window.after(10, self.update_video)
+        self.task = self.window.after(10, self.update_video)
 
     def start_async_task_server(self, id, port):
         loop = asyncio.new_event_loop()  # 为每个线程创建独立的事件循环
@@ -330,13 +342,16 @@ class APP:
         finally:
             loop.close()
 
-    def start(self, other_id, other_ip, other_port, id, ip, port):
+    def start(self, other_ip, other_port, id, ip, port):
         print("ui")
         stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)
         server_thread = threading.Thread(
             target=self.start_async_task_server,args=(id, port)
         )
         server_thread.start()
+        
+        time.sleep(5)
+        
         send_video_thread = threading.Thread(
             target=self.start_async_task_video, args=(id, other_ip, other_port)
         )
@@ -359,14 +374,6 @@ class APP:
         self.update_audio(stream, None)
 
         self.window.mainloop()
-
-    def toggle_audioTransmission(self):
-        if not self.audio_active:
-            self.audio_active = True
-            self.audio_icon = self.audio_icon_on
-        else:
-            self.audio_active = False
-            self.audio_icon = self.audio_icon_off
 
     # def toggle_videoTransmission():
     #     global video_active
@@ -462,7 +469,7 @@ class APP:
     async def accept_clients(self):
         print("accept_clients")
         self.server = await asyncio.start_server(
-            self.handle_client, config.SERVER_IP, self.conf_serve_ports
+            self.handle_client, config.P2P_own_IP, self.conf_serve_ports
         )
         try:
             task1 = asyncio.create_task(self.server.serve_forever())
