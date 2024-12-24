@@ -203,6 +203,6 @@ def decompress_image(image_bytes):
         return None
 
 
-black_image = Image.new("RGB", (200, 150), (0, 0, 0))
+black_image = Image.new("RGB", (200, 150), (255, 255, 255))
 black_image = compress_image(black_image)
 black_image = base64.b64encode(black_image).decode("utf-8")

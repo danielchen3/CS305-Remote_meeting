@@ -182,7 +182,7 @@ class APP:
             }
             writer.write(json.dumps(message).encode())
             await writer.drain()
-            await asyncio.sleep(0.1 if not self.video_active else 0.025)
+            await asyncio.sleep(0.1 if not self.video_active else 0.02)
 
     async def display(self, id, ip, port, chat_box):
         reader, writer = await asyncio.open_connection(ip, port)
@@ -208,6 +208,7 @@ class APP:
                         # self.labels[quit_client_id].destroy()
                         # del self.labels[quit_client_id]
                         del self.imgs[quit_client_id]
+                        del self.audios[quit_client_id]
                     # print(f"then imgs length is {len(self.imgs)}")
                     # print(f"then quit_client_id is {quit_client_id}")
                     break
@@ -230,7 +231,7 @@ class APP:
                     audio_id = message["client_id"]
                     if audio_id != id:
                         self.audios[audio_id] = audio_data
-            await asyncio.sleep(0.001)
+            #await asyncio.sleep(0.05)
         print("display STOP !!")
 
     def update_video(self):
@@ -395,7 +396,7 @@ class APP:
             }
             writer.write(json.dumps(message).encode())
             await writer.drain()
-            await asyncio.sleep(0.002 if self.audio_active else 0.1)
+            await asyncio.sleep(0.01 if self.audio_active else 0.1)
             # if not self.audio_active:
             #     await asyncio.sleep(0.1)
             # await asyncio.sleep(0.001)
@@ -433,7 +434,7 @@ class APP:
         #     pre_audio = final_audio
         # print(final_audio)
         stream.write(final_audio)
-        self.task_audio = self.window.after(10, lambda: self.update_audio(stream, pre_audio))
+        self.task_audio = self.window.after(2, lambda: self.update_audio(stream, pre_audio))
 
 
 # async def text_send(id, ip, port, chat_box):
