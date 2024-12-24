@@ -166,9 +166,7 @@ class APP:
             }
             writer.write(json.dumps(message).encode())
             await writer.drain()
-            if not self.video_active:
-                await asyncio.sleep(0.1)
-            await asyncio.sleep(0.025)
+            await asyncio.sleep(0.1 if not self.video_active else 0.025)
 
     async def display(self, id, ip, port, chat_box):
         reader, writer = await asyncio.open_connection(ip, port)
@@ -215,7 +213,7 @@ class APP:
                     audio_data = message["data"]
                     audio_id = message["client_id"]
                     self.audios[audio_id] = audio_data
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.001)
         print("display STOP !!")
 
     def update_video(self):
@@ -234,7 +232,7 @@ class APP:
                 # self.labels[id].grid(row=0, column=cnt, padx=10, pady=10)
                 # cnt += 1
             label = self.labels.get(id)
-            label.grid(row=cnt // 4, column=cnt % 4, padx=10, pady=10)
+            label.grid(row=cnt % 4, column=cnt // 4, padx=10, pady=10)
             cnt += 1
             label.config(image=tk_image)
             label.image = tk_image
@@ -377,9 +375,10 @@ class APP:
             }
             writer.write(json.dumps(message).encode())
             await writer.drain()
-            if not self.audio_active:
-                await asyncio.sleep(0.1)
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.002 if self.audio_active else 0.1)
+            # if not self.audio_active:
+            #     await asyncio.sleep(0.1)
+            # await asyncio.sleep(0.001)
 
     def update_audio(self, stream, pre_audio):
             audio_arrays = []
