@@ -172,19 +172,35 @@ def compress_image(image, format='JPEG', quality=85):
 
 def decompress_image(image_bytes):
     """
-    decompress bytes to PIL.Image
-    :param image_bytes: bytes, compressed data
-    :return: PIL.Image
+    解压缩字节数据为PIL.Image对象
+    :param image_bytes: bytes, 压缩的图像数据
+    :return: PIL.Image 或 None (如果解压失败)
     """
-    # 解码 Base64 字符串
-    compressed_bytes = base64.b64decode(image_bytes)
-    img_byte_arr = BytesIO(compressed_bytes)
-    image = Image.open(img_byte_arr)
-    
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
-
-    return image
+    try:
+        if not image_bytes:
+            return None
+            
+        # 解码Base64字符串
+        compressed_bytes = base64.b64decode(image_bytes)
+        img_byte_arr = BytesIO(compressed_bytes)
+        
+        # 打开并验证图像
+        image = Image.open(img_byte_arr)
+        image.verify()  # 验证图像完整性
+        
+        # 重新打开图像(verify后需要重新打开)
+        img_byte_arr.seek(0)
+        image = Image.open(img_byte_arr)
+        
+        # 统一转换为RGB模式
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+            
+        return image
+        
+    except (base64.binascii.Error, IOError, OSError) as e:
+        print(f"图像解压错误: {e}")
+        return None
 
 
 black_image = Image.new("RGB", (200, 150), (0, 0, 0))

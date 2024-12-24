@@ -28,22 +28,22 @@ class APP:
         self.frame.pack(expand=True, fill=tk.BOTH)
         self.audios = {}
         self.left_frame = tk.Frame(
-            self.frame, bg="gray"
+            self.frame, bg="black"
         )  # 设置背景颜色为灰色，模拟空白区域
         self.left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.left_frame.pack_propagate(False)  # 防止frame根据内容自适应大小
-        self.left_frame.config(width=150, height=800)  # 固定大小
+        self.left_frame.config(width=600, height=800)  # 固定大小
 
-        self.canvas = tk.Canvas(self.left_frame)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # self.canvas = tk.Canvas(self.left_frame)
+        # self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.scrollbar = tk.Scrollbar(
-            self.left_frame, orient="vertical", command=self.canvas.yview
-        )
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas.config(yscrollcommand=self.scrollbar.set)
-        self.label_frame = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.label_frame, anchor="nw")
+        # self.scrollbar = tk.Scrollbar(
+        #     self.left_frame, orient="vertical", command=self.canvas.yview
+        # )
+        # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # self.canvas.config(yscrollcommand=self.scrollbar.set)
+        # self.label_frame = tk.Frame(self.canvas)
+        # self.canvas.create_window((0, 0), window=self.label_frame, anchor="nw")
 
         self.right_frame = tk.Frame(self.frame)
         self.right_frame.grid(row=0, column=1, padx=20, pady=10, sticky="nsew")
@@ -90,7 +90,7 @@ class APP:
         self.audio_button.config(width=60, height=80)  # 设置按钮的宽度和高度
         self.audio_button.grid(row=1, column=0, padx=10, pady=10, sticky="sw")
         self.video_button.config(width=60, height=80)  # 设置按钮的宽度和高度
-        self.video_button.grid(row=2, column=0, padx=10, pady=10, sticky="sw")
+        self.video_button.grid(row=1, column=1, padx=10, pady=10, sticky="sw")
         self.frame.grid_columnconfigure(0, weight=1)
         self.frame.grid_columnconfigure(1, weight=1)
         self.entry_box.bind(
@@ -98,6 +98,8 @@ class APP:
         )
         self.window.protocol("WM_DELETE_WINDOW", self.close_window)
         self.labels = {}
+        self.imagelabel = tk.Label(self.left_frame, relief="solid")
+        self.imagelabel.grid(row=0, column=0, padx=10, pady=10)
         # 图像摆放
         # 退出时候删去client
         # 会议结束时候删去所有client以及会议名字
@@ -133,14 +135,14 @@ class APP:
 
     def close_window(self):
         self.Stop = True
-        self.audio_active = False
-        self.video_active = False
+        # self.audio_active = False
+        # self.video_active = False
         for thread in threading.enumerate():
             if thread != threading.main_thread():
                 thread.join()
         if self.window:
-            self.window.after_cancel(self.task_video)
-            self.window.after_cancel(self.task_audio)
+            # self.window.after_cancel(self.task_video)
+            # self.window.after_cancel(self.task_audio)
             self.window.quit()
             self.window.destroy()
             self.window = None
@@ -203,8 +205,8 @@ class APP:
                     # print(f"first imgs length is {len(self.imgs)}")
                     # print(f"first quit_client_id is {quit_client_id}")
                     if quit_client_id in self.imgs.keys():
-                        self.labels[quit_client_id].destroy()
-                        del self.labels[quit_client_id]
+                        # self.labels[quit_client_id].destroy()
+                        # del self.labels[quit_client_id]
                         del self.imgs[quit_client_id]
                     # print(f"then imgs length is {len(self.imgs)}")
                     # print(f"then quit_client_id is {quit_client_id}")
@@ -226,7 +228,8 @@ class APP:
                 elif message["type"] == "audio":
                     audio_data = message["data"]
                     audio_id = message["client_id"]
-                    self.audios[audio_id] = audio_data
+                    if audio_id != id:
+                        self.audios[audio_id] = audio_data
             await asyncio.sleep(0.001)
         print("display STOP !!")
 
@@ -237,19 +240,30 @@ class APP:
         if self.Stop:
             self.close_window()
             return
+        image_list = []
         for id, image in self.imgs.copy().items():
-            tk_image = ImageTk.PhotoImage(decompress_image(image))
-            if id not in self.labels.keys():
-                self.labels[id] = tk.Label(
-                    self.left_frame, relief="solid", image=tk_image
-                )
+            decompressed_image = decompress_image(image)
+            if decompressed_image is None:
+                continue
+            tk_image = decompressed_image
+            image_list.append(tk_image)
+            # if id not in self.labels.keys():
+            #     self.labels[id] = tk.Label(
+            #         self.left_frame, relief="solid", image=tk_image
+            #     )
                 # self.labels[id].grid(row=0, column=cnt, padx=10, pady=10)
                 # cnt += 1
-            label = self.labels.get(id)
-            label.grid(row=cnt % 4, column=cnt // 4, padx=10, pady=10)
-            cnt += 1
-            label.config(image=tk_image)
-            label.image = tk_image
+            # label = self.labels.get(id)
+            # label.grid(row=cnt % 4, column=cnt // 4, padx=10, pady=10)
+            # cnt += 1
+            # label.config(image=tk_image)
+            # label.image = tk_image
+        if image_list:
+            combined_image = overlay_camera_images(None, image_list)
+            combined_tk_image = ImageTk.PhotoImage(combined_image)
+            self.imagelabel.config(image=combined_tk_image)
+            self.imagelabel.image = combined_tk_image  # 保持对图像对象的引用，以防止被垃圾回收
+            
         self.task_video = self.window.after(10, self.update_video)
 
     def start_async_task_video(self, id, ip, port):
